@@ -25,6 +25,7 @@ void init()
 {
     irq_init(NULL);
     irq_add(II_VBLANK, mmVBlank);
+    irq_add(II_HBLANK, affine_background_hblank);
 
     // Initialize text engine
     tte_init_se(0, BG_CBB(TTE_CBB) | BG_SBB(TTE_SBB), 0, CLR_WHITE, 14, NULL, NULL);
