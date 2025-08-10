@@ -97,7 +97,7 @@ void affine_background_update()
 
 void affine_background_set_color(COLOR color)
 {
-    memcpy16(&pal_bg_mem[AFFINE_BG_PB], affine_main_menu_background_gfxPal, AFFINE_BG_PAL_LEN);
+    affine_background_change_background(background); // Reload the palette to reset any previous color scaling
     for (int i = 0; i < AFFINE_BG_PAL_LEN; i++)
     {
         clr_rgbscale(&pal_bg_mem[AFFINE_BG_PB] + i, &pal_bg_mem[AFFINE_BG_PB] + i, 1, color);
