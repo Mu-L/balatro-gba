@@ -429,7 +429,7 @@ static uint rng_seed = 0;
 
 typedef void (*SubStateActionFn)(void);
 
-static uint timer = 0; // This might already exist in libtonc but idk so i'm just making my own
+static int timer = 0; // This might already exist in libtonc but idk so i'm just making my own
 // BY DEFAULT IS SET TO 1, but if changed to 2 or more, should speed up all (or most) of the game
 // aspects that should be sped up by speed, as in the original game.
 static int game_speed = 1;
@@ -2112,7 +2112,7 @@ static bool card_selected_instead_of_moved = false;
 // and change focus to the next one, instead of swapping them
 // This should fix inputs sometimes not registering when quickly selecting cards
 static const int card_swap_time_threshold = 6;
-static uint selection_hit_timer = TM_ZERO;
+static int selection_hit_timer = UNDEFINED;
 
 static bool game_playing_hand_row_on_selection_changed(
     SelectionGrid* selection_grid,
@@ -2125,7 +2125,8 @@ static bool game_playing_hand_row_on_selection_changed(
     int next_card_idx = UNDEFINED;
 
     // Do not use FRAMES(x) here as we are counting real frames ignoring game speed
-    card_moved_too_fast = (timer - selection_hit_timer) < card_swap_time_threshold;
+    card_moved_too_fast = (selection_hit_timer != UNDEFINED) &&
+                          (timer - selection_hit_timer) < card_swap_time_threshold;
 
     if (prev_selection->y == GAME_PLAYING_HAND_SEL_Y)
     {
@@ -2208,7 +2209,7 @@ static void game_playing_hand_row_on_key_transit(
         moving_card = false;
         card_moved_too_fast = false;
         card_selected_instead_of_moved = false;
-        selection_hit_timer = TM_ZERO;
+        selection_hit_timer = UNDEFINED;
     }
     else if (key_hit(DESELECT_CARDS))
     {
