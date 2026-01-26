@@ -404,7 +404,7 @@ static const Rect SINGLE_BLIND_SEL_REQ_SCORE_RECT = {80, 120,    104,     128  }
 // to be used with tte_erase_rect_wrapper()
 static const Rect HANDS_TEXT_RECT           = {16,      104,    UNDEFINED, UNDEFINED };
 static const Rect DISCARDS_TEXT_RECT        = {48,      104,    UNDEFINED, UNDEFINED };
-static const Rect DECK_SIZE_RECT            = {200,     152,    UNDEFINED, UNDEFINED };
+static const Rect DECK_SIZE_RECT            = {200,     152,    240,       160       };
 static const Rect ROUND_TEXT_RECT           = {48,      144,    UNDEFINED, UNDEFINED };
 static const Rect ANTE_TEXT_RECT            = {8,       144,    UNDEFINED, UNDEFINED };
 static const Rect ROUND_END_BLIND_REQ_RECT  = {104,     96,     136,       UNDEFINED };
@@ -3422,6 +3422,9 @@ static inline void game_playing_ui_text_update(void)
         }
 
         // Deck size/max size
+        // TODO: the text will overflow if deck max size exceeds 99,
+        // we will need a fix at some point for this
+        tte_erase_rect_wrapper(DECK_SIZE_RECT);
         tte_printf(
             "#{P:%d,%d; cx:0x%X000}%d/%d",
             DECK_SIZE_RECT.left,
@@ -4821,6 +4824,7 @@ static inline void game_start(void)
     change_background(BG_BLIND_SELECT);
 
     // Deck size/max size
+    tte_erase_rect_wrapper(DECK_SIZE_RECT);
     tte_printf(
         "#{P:%d,%d; cx:0x%X000}%d/%d",
         DECK_SIZE_RECT.left,
