@@ -82,6 +82,17 @@ typedef struct
      * @brief Whether to wrap selection when it passes the end of the row.
      */
     bool wrap;
+
+    /**
+     * @brief Whether this row have a horizontal exit index (a row to process horizontal inputs
+     * from).
+     */
+    bool has_h_exit_idx;
+
+    /**
+     * @brief The index of the row to exit from when a horizontal input is received.
+     */
+    u8 h_exit_idx;
 } SelGridRowAttributes;
 
 /**

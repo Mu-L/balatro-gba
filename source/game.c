@@ -488,9 +488,9 @@ Button game_playing_buttons[] = {
 };
 
 SelectionGridRow shop_selection_rows[] = {
-    {0, jokers_sel_row_get_size,  jokers_sel_row_on_selection_changed,  jokers_sel_row_on_key_transit,  {.wrap = false}},
-    {1, shop_top_row_get_size,    shop_top_row_on_selection_changed,    shop_top_row_on_key_transit,    {.wrap = false}},
-    {2, shop_reroll_row_get_size, shop_reroll_row_on_selection_changed, shop_reroll_row_on_key_transit, {.wrap = false}}
+    {0, jokers_sel_row_get_size,  jokers_sel_row_on_selection_changed,  jokers_sel_row_on_key_transit,  {.wrap = false, .has_h_exit_idx = false, .h_exit_idx = 0}},
+    {1, shop_top_row_get_size,    shop_top_row_on_selection_changed,    shop_top_row_on_key_transit,    {.wrap = false, .has_h_exit_idx = false, .h_exit_idx = 0}},
+    {2, shop_reroll_row_get_size, shop_reroll_row_on_selection_changed, shop_reroll_row_on_key_transit, {.wrap = false, .has_h_exit_idx = true, .h_exit_idx = 1} },
 };
 
 static const Selection SHOP_INIT_SEL = {-1, 1};
@@ -4255,6 +4255,10 @@ static bool shop_top_row_on_selection_changed(
     const Selection* new_selection
 )
 {
+    // Guard if we move down while on jokers
+    if (new_selection->y > row_idx && prev_selection->x > 0)
+        return false;
+
     // The selection grid system only guarantees that the new selection is within bounds
     // but not the previous one...
     // This allows using INIT_SEL = {-1, 1} and move to set the initial selection in a hacky way...
@@ -4312,6 +4316,13 @@ static bool shop_reroll_row_on_selection_changed(
     {
         // Remove highlight
         memcpy16(&pal_bg_mem[REROLL_BTN_SELECTED_BORDER_PID], &pal_bg_mem[REROLL_BTN_PID], 1);
+
+        if (new_selection->x != NEXT_ROUND_BTN_SEL_X)
+        {
+            int idx = new_selection->x - 1;
+            JokerObject* joker_object = (JokerObject*)list_get_at_idx(&_shop_jokers_list, idx);
+            sprite_object_set_focus(joker_object->sprite_object, true);
+        }
     }
     else if (row_idx == new_selection->y)
     {

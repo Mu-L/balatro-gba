@@ -29,7 +29,14 @@ void selection_grid_move_selection_horz(SelectionGrid* selection_grid, int direc
         return;
     }
 
-    Selection new_selection = selection_grid->selection;
+    SelectionGridRow current_row = selection_grid->rows[selection_grid->selection.y];
+
+    // Choose the horizontal exit index if it exists
+    Selection new_selection =
+        current_row.attributes.has_h_exit_idx
+            ? (Selection){selection_grid->selection.x, current_row.attributes.h_exit_idx}
+            : selection_grid->selection;
+
     new_selection.x += direction_tribool;
     int row_size = selection_grid->rows[new_selection.y].get_size();
     bool wrap_enabled = selection_grid->rows[new_selection.y].attributes.wrap;
@@ -41,12 +48,13 @@ void selection_grid_move_selection_horz(SelectionGrid* selection_grid, int direc
 
     if (wrap_enabled || (new_selection.x >= 0 && new_selection.x < row_size))
     {
-        bool proceed_selection = selection_grid->rows[new_selection.y].on_selection_changed(
-            selection_grid,
-            new_selection.y,
-            &selection_grid->selection,
-            &new_selection
-        );
+        bool proceed_selection =
+            selection_grid->rows[selection_grid->selection.y].on_selection_changed(
+                selection_grid,
+                current_row.row_idx,
+                &selection_grid->selection,
+                &new_selection
+            );
 
         if (proceed_selection)
         {
