@@ -6,6 +6,8 @@
 
 #include <tonc.h>
 
+extern GameVariables g_game_vars;
+
 #define MAX_HAND_SIZE        16
 #define MAX_DECK_SIZE        52
 #define MAX_JOKERS_HELD_SIZE 5 // This doesn't account for negatives right now.
@@ -171,6 +173,8 @@ void set_game_speed(int new_game_speed);
 // joker specific functions
 bool is_shortcut_joker_active(void);
 int get_straight_and_flush_size(void);
+
+void game_start(void);
 
 // Temporary change for Refactor. Currently this compatibility binder is to allow
 // simultaneous integration of the new system in `common_ui` with the the existing

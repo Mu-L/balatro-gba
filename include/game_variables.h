@@ -6,6 +6,8 @@
 #ifndef GAME_VARIABLES_H
 #define GAME_VARIABLES_H
 
+#include <tonc.h>
+
 /**
  * @brief A central location for all game variables.
  *
@@ -14,7 +16,8 @@
  */
 typedef struct
 {
-
+    s32 timer;
+    u32 rng_seed;
 } GameVariables;
 
 extern GameVariables g_game_vars;

@@ -12,6 +12,8 @@
 #include "button.h"
 #include "card.h"
 #include "game/common_ui.h"
+#include "game/main_menu.h"
+#include "game_variables.h"
 #include "graphic_utils.h"
 #include "hand_analysis.h"
 #include "joker.h"
@@ -20,6 +22,7 @@
 #include "soundbank.h"
 #include "splash_screen.h"
 #include "sprite.h"
+#include "timer.h"
 #include "tonc_memdef.h"
 #include "util.h"
 
@@ -38,10 +41,6 @@
 
 // SE sizes
 #define ROUND_END_BLACK_PANEL_INIT_BOTTOM_SE 12
-
-#define MAIN_MENU_BUTTONS             2
-#define MAIN_MENU_IMPLEMENTED_BUTTONS 1 // Remove this once all buttons are implemented
-#define MAIN_MENU_PLAY_BTN_IDX        0
 
 // TODO: Properly define and use
 #define MENU_POP_OUT_ANIM_FRAMES 20
@@ -65,8 +64,6 @@
 #define CARD_UNFOCUSED_SEL_Y 15
 #define CARD_FOCUSED_SEL_Y   20
 
-// Timer defs
-#define TM_ZERO                         0
 #define TM_RESET_STATIC_VARS            30
 #define TM_END_POP_MENU_ANIM            13
 #define TM_START_ROUND_END_REWARDS_ANIM 1
@@ -91,10 +88,8 @@
 // TODO: Rename "PID" to "PAL_IDX"
 // Palette IDs
 #define BOSS_BLIND_PRIMARY_PID               1
-#define MAIN_MENU_PLAY_BUTTON_OUTLINE_PID    2
 #define REROLL_BTN_PID                       3
 #define BLIND_SKIP_BTN_PID                   5
-#define MAIN_MENU_PLAY_BUTTON_MAIN_COLOR_PID 5
 #define NEXT_ROUND_BTN_SELECTED_BORDER_PID   5
 #define BLIND_BG_SHADOW_PID                  5
 #define SHOP_PANEL_SHADOW_PID                6
@@ -142,10 +137,6 @@
 #define REROLL_BTN_PAL_IDX       3
 
 #define EXPIRE_ANIMATION_FRAME_COUNT 3
-
-#define CARD_FOCUSED_UNSEL_Y 10
-#define CARD_UNFOCUSED_SEL_Y 15
-#define CARD_FOCUSED_SEL_Y   20
 
 enum GameShopStates
 {
@@ -210,8 +201,6 @@ static void noop(void)
 // This could be done, and maybe should be done,
 // with an X macro, but I'll leave that to the
 // reviewer(s).
-static void game_main_menu_on_init(void);
-static void game_main_menu_on_update(void);
 static void game_round_on_init(void);
 static void game_playing_on_update(void);
 static void game_round_end_on_update(void);
@@ -435,14 +424,10 @@ static const BG_POINT CUR_BLIND_TOKEN_POS   = {8,       18};
 static const BG_POINT CARD_DISCARD_PNT      = {240,     70};
 static const BG_POINT HAND_START_POS        = {120,     90};
 static const BG_POINT HAND_PLAY_POS         = {120,     70};
-static const BG_POINT MAIN_MENU_ACE_T       = {88,      26};
 // clang-format on
-
-static uint rng_seed = 0;
 
 typedef void (*SubStateActionFn)(void);
 
-static int timer = 0; // This might already exist in libtonc but idk so i'm just making my own
 // BY DEFAULT IS SET TO 1, but if changed to 2 or more, should speed up all (or most) of the game
 // aspects that should be sped up by speed, as in the original game.
 static int game_speed = 1;
@@ -566,8 +551,6 @@ static enum PlayState play_state = PLAY_STARTING;
 
 static enum HandType hand_type = NONE;
 static ContainedHandTypes _contained_hands = {0};
-
-static CardObject* main_menu_ace = NULL;
 
 // The sprite that displays the blind when in "GAME_PLAYING/GAME_ROUND_END" state
 static Sprite* playing_blind_token = NULL;
@@ -800,7 +783,7 @@ void game_init()
 
     hands = max_hands;
     discards = max_discards;
-    timer = TM_ZERO;
+    g_game_vars.timer = TM_ZERO;
     current_blind = BLIND_TYPE_SMALL;
     blinds_states[0] = BLIND_STATE_CURRENT;
     blinds_states[1] = BLIND_STATE_UPCOMING;
@@ -879,7 +862,7 @@ static inline void expired_jokers_update_loop(void)
         joker_object_update(joker_object);
 
         // let just enough frames pass that we see it rotating and shrinking
-        if (timer % FRAMES(EXPIRE_ANIMATION_FRAME_COUNT) == 0)
+        if (g_game_vars.timer % FRAMES(EXPIRE_ANIMATION_FRAME_COUNT) == 0)
         {
             // get joker idx
             int expired_joker_idx = 0;
@@ -910,7 +893,7 @@ static inline void jokers_update_loop(void)
 
 void game_update()
 {
-    timer++;
+    g_game_vars.timer++;
 
     jokers_update_loop();
 
@@ -919,7 +902,7 @@ void game_update()
 
 void game_change_state(enum GameState new_game_state)
 {
-    timer = TM_ZERO; // Reset the timer
+    g_game_vars.timer = TM_ZERO; // Reset the timer
 
     if (game_state >= 0 && game_state < GAME_STATE_MAX)
     {
@@ -1767,19 +1750,7 @@ void change_background_legacy(enum BackgroundId id)
     }
     else if (id == BG_MAIN_MENU)
     {
-        toggle_windows(false, false);
-
-        tte_erase_screen();
-        GRIT_CPY(pal_bg_mem, background_main_menu_gfxPal);
-        GRIT_CPY(&tile_mem[MAIN_BG_CBB], background_main_menu_gfxTiles);
-        GRIT_CPY(&se_mem[MAIN_BG_SBB], background_main_menu_gfxMap);
-
-        // Disable the button highlight colors
-        memcpy16(
-            &pal_bg_mem[MAIN_MENU_PLAY_BUTTON_OUTLINE_PID],
-            &pal_bg_mem[MAIN_MENU_PLAY_BUTTON_MAIN_COLOR_PID],
-            1
-        );
+        // do nothing, just don't return early!
     }
     else
     {
@@ -2040,21 +2011,6 @@ static void game_round_on_init()
     game_playing_selection_grid.selection = GAME_PLAYING_INIT_SEL;
 }
 
-static void game_main_menu_on_init()
-{
-    affine_background_change_background(AFFINE_BG_MAIN_MENU);
-    change_background(BG_MAIN_MENU);
-    main_menu_ace = card_object_new(card_new(SPADES, ACE));
-    card_object_set_sprite(main_menu_ace, 0); // Set the sprite for the ace of spades
-    main_menu_ace->sprite_object->sprite->obj->attr0 |=
-        ATTR0_AFF_DBL; // Make the sprite double sized
-    main_menu_ace->sprite_object->tx = int2fx(MAIN_MENU_ACE_T.x);
-    main_menu_ace->sprite_object->x = main_menu_ace->sprite_object->tx;
-    main_menu_ace->sprite_object->ty = int2fx(MAIN_MENU_ACE_T.y);
-    main_menu_ace->sprite_object->y = main_menu_ace->sprite_object->ty;
-    main_menu_ace->sprite_object->tscale = float2fx(0.8f);
-}
-
 static void game_over_init(void)
 {
     // Clears the round end menu
@@ -2080,8 +2036,8 @@ static void game_win_on_init()
 // General functions
 static inline void set_seed(int seed)
 {
-    rng_seed = seed;
-    srand(rng_seed);
+    g_game_vars.rng_seed = seed;
+    srand(g_game_vars.rng_seed);
 }
 
 // Playing state functions
@@ -2203,7 +2159,7 @@ static bool game_playing_hand_row_on_selection_changed(
 
     // Do not use FRAMES(x) here as we are counting real frames ignoring game speed
     card_moved_too_fast = (selection_hit_timer != UNDEFINED) &&
-                          (timer - selection_hit_timer) < card_swap_time_threshold;
+                          (g_game_vars.timer - selection_hit_timer) < card_swap_time_threshold;
 
     if (prev_selection->y == GAME_PLAYING_HAND_SEL_Y)
     {
@@ -2275,7 +2231,7 @@ static void game_playing_hand_row_on_key_transit(
 {
     if (key_hit(SELECT_CARD))
     {
-        selection_hit_timer = timer;
+        selection_hit_timer = g_game_vars.timer;
     }
     else if (key_released(SELECT_CARD))
     {
@@ -2488,7 +2444,7 @@ static inline void card_in_hand_loop_handle_discard_and_shuffling(
                 // This technically isn't drawing cards, I'm just reusing the variable
                 cards_drawn++;
                 sound_played = false;
-                timer = TM_ZERO;
+                g_game_vars.timer = TM_ZERO;
 
                 *hand_y = hand[card_idx]->sprite_object->y;
                 *hand_x = hand[card_idx]->sprite_object->x;
@@ -2516,7 +2472,7 @@ static inline void card_in_hand_loop_handle_discard_and_shuffling(
         *hand_x = *hand_x + (int2fx(card_idx) - int2fx(hand_top) / 2) * -HAND_SPACING_LUT[hand_top];
     }
 
-    if (card_idx == 0 && discarded_card == false && timer % FRAMES(10) == 0)
+    if (card_idx == 0 && discarded_card == false && g_game_vars.timer % FRAMES(10) == 0)
     {
         // This is never reached in the case of HAND_SHUFFLING. Not sure why but that's how it's
         // supposed to be.
@@ -2524,7 +2480,7 @@ static inline void card_in_hand_loop_handle_discard_and_shuffling(
         sound_played = false;
         cards_drawn = 0;
         hand_selections = 0;
-        timer = TM_ZERO;
+        g_game_vars.timer = TM_ZERO;
         *break_loop = true;
         return;
     };
@@ -2757,7 +2713,7 @@ static inline bool game_round_is_over(void)
 // returns true if the current card has been discarded
 static bool play_ended_played_cards_update(int played_idx)
 {
-    if (!discarded_card && timer > FRAMES(40))
+    if (!discarded_card && g_game_vars.timer > FRAMES(40))
     {
         // play the sound only once per card, when it is pushed off-screen to the right
         if (!sound_played)
@@ -2798,7 +2754,7 @@ static bool play_ended_played_cards_update(int played_idx)
                 played_top = -1; // Reset the played stack
                 scored_card_index = 0;
                 _joker_scored_itr = list_itr_create(&_owned_jokers_list);
-                timer = TM_ZERO;
+                g_game_vars.timer = TM_ZERO;
             }
 
             return true; // return early to avoid accessing played[played_idx] == NULL
@@ -2815,15 +2771,15 @@ static bool play_ended_played_cards_update(int played_idx)
 static inline void play_starting_played_cards_update(int played_idx)
 {
     bool card_selected = card_object_is_selected(played[played_top - scored_card_index]);
-    if (played_idx == played_top && (timer % FRAMES(10) == 0 || !card_selected) &&
-        timer > FRAMES(40))
+    if (played_idx == played_top && (g_game_vars.timer % FRAMES(10) == 0 || !card_selected) &&
+        g_game_vars.timer > FRAMES(40))
     {
         scored_card_index--;
 
         if (scored_card_index == 0)
         {
             _joker_scored_itr = list_itr_create(&_owned_jokers_list);
-            timer = TM_ZERO;
+            g_game_vars.timer = TM_ZERO;
             play_state = PLAY_BEFORE_SCORING;
         }
     }
@@ -2855,7 +2811,7 @@ static inline bool play_before_scoring_cards_update(void)
 // returns true if the scoring loop has returned early
 static inline bool play_scoring_cards_update(void)
 {
-    if (timer % FRAMES(30) == 0 && timer > FRAMES(40))
+    if (g_game_vars.timer % FRAMES(30) == 0 && g_game_vars.timer > FRAMES(40))
     {
         // We are about to score played Cards.
         // Start from the current card index
@@ -2922,7 +2878,7 @@ static inline bool play_scoring_cards_update(void)
 // returns true if the scoring loop has returned early
 static inline bool play_scoring_card_jokers_update(void)
 {
-    if (timer % FRAMES(30) == 0 && timer > FRAMES(40))
+    if (g_game_vars.timer % FRAMES(30) == 0 && g_game_vars.timer > FRAMES(40))
     {
         tte_erase_rect_wrapper(PLAYED_CARDS_SCORES_RECT);
 
@@ -2967,7 +2923,7 @@ static inline bool play_scoring_card_jokers_update(void)
 // returns true if the scoring loop has returned early
 static inline bool play_scoring_held_cards_update(int played_idx)
 {
-    if (played_idx == 0 && (timer % FRAMES(30) == 0) && timer > FRAMES(40))
+    if (played_idx == 0 && (g_game_vars.timer % FRAMES(30) == 0) && g_game_vars.timer > FRAMES(40))
     {
         tte_erase_rect_wrapper(HELD_CARDS_SCORES_RECT);
 
@@ -2998,7 +2954,7 @@ static inline bool play_scoring_held_cards_update(int played_idx)
 // returns true if the scoring loop has returned early
 static inline bool play_scoring_independent_jokers_update(int played_idx)
 {
-    if (played_idx == 0 && (timer % FRAMES(30) == 0) && timer > FRAMES(40))
+    if (played_idx == 0 && (g_game_vars.timer % FRAMES(30) == 0) && g_game_vars.timer > FRAMES(40))
     {
 
         tte_erase_rect_wrapper(PLAYED_CARDS_SCORES_RECT);
@@ -3020,7 +2976,7 @@ static inline bool play_scoring_independent_jokers_update(int played_idx)
 // Trigger hand end effect for all jokers once they are done scoring
 static inline bool play_scoring_hand_scored_end_update(int played_idx)
 {
-    if (played_idx == 0 && (timer % FRAMES(30) == 0) && timer > FRAMES(40))
+    if (played_idx == 0 && (g_game_vars.timer % FRAMES(30) == 0) && g_game_vars.timer > FRAMES(40))
     {
 
         tte_erase_rect_wrapper(PLAYED_CARDS_SCORES_RECT);
@@ -3036,7 +2992,7 @@ static inline bool play_scoring_hand_scored_end_update(int played_idx)
             return true;
         }
 
-        timer = TM_ZERO;
+        g_game_vars.timer = TM_ZERO;
         play_state = PLAY_ENDING;
     }
 
@@ -3048,8 +3004,8 @@ static inline bool play_scoring_hand_scored_end_update(int played_idx)
 static inline void play_ending_played_cards_update(int played_idx)
 {
     bool card_selected = card_object_is_selected(played[played_top - scored_card_index]);
-    if (played_idx == played_top && (timer % FRAMES(10) == 0 || !card_selected) &&
-        timer > FRAMES(40))
+    if (played_idx == played_top && (g_game_vars.timer % FRAMES(10) == 0 || !card_selected) &&
+        g_game_vars.timer > FRAMES(40))
     {
         scored_card_index--;
 
@@ -3065,7 +3021,7 @@ static inline void play_ending_played_cards_update(int played_idx)
                 CHIPS_ACCUM_SFX_PITCH_RATIO * MM_BASE_PITCH_RATE,
                 SFX_DEFAULT_VOLUME
             );
-            timer = TM_ZERO;
+            g_game_vars.timer = TM_ZERO;
             play_state = PLAY_ENDED;
         }
     }
@@ -3210,7 +3166,7 @@ static inline void game_playing_process_input_and_state(void)
             );
         }
     }
-    else if (play_state == PLAY_ENDED && timer % FRAMES(TM_SCORE_LERP_INTERVAL) == 0)
+    else if (play_state == PLAY_ENDED && g_game_vars.timer % FRAMES(TM_SCORE_LERP_INTERVAL) == 0)
     {
         /* Using fixed point in case the score is lower than NUM_SCORE_LERP_STEPS and then
          * then the division rounds it down to 0 and it's never added to the total.
@@ -3246,7 +3202,7 @@ static inline void game_playing_process_card_draw()
 {
     if (hand_state == HAND_DRAW && cards_drawn < hand_size)
     {
-        if (timer % FRAMES(10) == 0) // Draw a card every 10 frames
+        if (g_game_vars.timer % FRAMES(10) == 0) // Draw a card every 10 frames
         {
             cards_drawn++;
             card_draw();
@@ -3256,7 +3212,7 @@ static inline void game_playing_process_card_draw()
     {
         hand_state = HAND_SELECT; // Change the hand state to select after drawing all the cards
         cards_drawn = 0;
-        timer = TM_ZERO;
+        g_game_vars.timer = TM_ZERO;
     }
 }
 
@@ -3264,7 +3220,7 @@ static inline void game_playing_discarded_cards_loop(void)
 {
     // Discarded cards loop (mainly for shuffling)
     if (hand_get_size() == 0 && hand_state == HAND_SHUFFLING && discard_top >= -1 &&
-        timer > FRAMES(10))
+        g_game_vars.timer > FRAMES(10))
     {
         // Change the background to the round end background. This is how it works in Balatro, so
         // I'm doing it this way too.
@@ -3426,7 +3382,7 @@ static inline void cards_in_hand_update_loop(void)
                     hand_y += int2fx(24);
 
                     if (card_object_is_selected(hand[i]) && discarded_card == false &&
-                        timer % FRAMES(10) == 0)
+                        g_game_vars.timer % FRAMES(10) == 0)
                     {
                         card_object_set_selected(hand[i], false);
                         played_push(hand[i]);
@@ -3447,12 +3403,12 @@ static inline void cards_in_hand_update_loop(void)
                         discarded_card = true;
                     }
 
-                    if (i == 0 && discarded_card == false && timer % FRAMES(10) == 0)
+                    if (i == 0 && discarded_card == false && g_game_vars.timer % FRAMES(10) == 0)
                     {
                         hand_state = HAND_PLAYING;
                         cards_drawn = 0;
                         hand_selections = 0;
-                        timer = TM_ZERO;
+                        g_game_vars.timer = TM_ZERO;
                         scored_card_index = played_top + 1;
 
                         select_cards_in_played_hand();
@@ -3530,7 +3486,7 @@ static inline void game_playing_process_flaming_score(void)
 
     if (score_flames_active)
     {
-        if (timer % SCORE_FLAMES_ANIM_FREQ == 0)
+        if (g_game_vars.timer % SCORE_FLAMES_ANIM_FREQ == 0)
         {
             Rect frame_rect = SCORE_FLAME_FRAMES_START;
             flame_score_frame = (flame_score_frame + 1) % NUM_SCORE_FLAMES_FRAMES;
@@ -3614,11 +3570,11 @@ static void game_round_end_on_update()
 static void game_round_end_start()
 {
     // Reset static variables to default values upon re-entering the round end state
-    if (timer == TM_RESET_STATIC_VARS)
+    if (g_game_vars.timer == TM_RESET_STATIC_VARS)
     {
         change_background(BG_ROUND_END); // Change the background to the round end background
         state_info[game_state].substate = START_EXPAND_POPUP; // Change the state to the next one
-        timer = TM_ZERO;                                      // Reset the timer
+        g_game_vars.timer = TM_ZERO;                          // Reset the timer
         blind_reward = blind_get_reward(current_blind);
         hand_reward = hands;
         interest_reward = calculate_interest_reward();
@@ -3631,10 +3587,10 @@ static void game_round_end_start_expand_popup()
 {
     main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SCREEN_UP);
 
-    if (timer == TM_END_POP_MENU_ANIM)
+    if (g_game_vars.timer == TM_END_POP_MENU_ANIM)
     {
         state_info[game_state].substate = DISPLAY_FINISHED_BLIND;
-        timer = TM_ZERO;
+        g_game_vars.timer = TM_ZERO;
     }
 }
 
@@ -3676,21 +3632,21 @@ static void game_round_end_display_finished_blind()
         blind_req_str_buff
     );
 
-    if (timer == TM_START_ROUND_END_REWARDS_ANIM)
+    if (g_game_vars.timer == TM_START_ROUND_END_REWARDS_ANIM)
     {
         game_round_end_extend_black_panel_down(ROUND_END_BLACK_PANEL_INIT_BOTTOM_SE);
     }
 
-    if (timer >= TM_END_DISPLAY_FIN_BLIND)
+    if (g_game_vars.timer >= TM_END_DISPLAY_FIN_BLIND)
     {
         state_info[game_state].substate = DISPLAY_SCORE_MIN;
-        timer = TM_ZERO;
+        g_game_vars.timer = TM_ZERO;
     }
 }
 
 static void game_round_end_display_score_min()
 {
-    const int timer_offset = timer - 1;
+    const int timer_offset = g_game_vars.timer - 1;
     const int x_from = 0;
     const int y_from = 29;
     const int x_to = 13;
@@ -3702,16 +3658,16 @@ static void game_round_end_display_score_min()
         1
     );
 
-    if (timer >= TM_END_DISPLAY_SCORE_MIN)
+    if (g_game_vars.timer >= TM_END_DISPLAY_SCORE_MIN)
     {
         state_info[game_state].substate = UPDATE_BLIND_REWARD;
-        timer = TM_ZERO;
+        g_game_vars.timer = TM_ZERO;
     }
 }
 
 static void game_round_end_update_blind_reward()
 {
-    if (timer % FRAMES(20) != 0)
+    if (g_game_vars.timer % FRAMES(20) != 0)
         return;
 
     // TODO: Add sound effect here
@@ -3734,14 +3690,14 @@ static void game_round_end_update_blind_reward()
             blind_get_reward(current_blind) - blind_reward
         );
     }
-    else if (timer > FRAMES(20))
+    else if (g_game_vars.timer > FRAMES(20))
     {
         tte_erase_rect_wrapper(BLIND_REWARD_RECT);
         tte_erase_rect_wrapper(BLIND_REQ_TEXT_RECT);
         obj_hide(playing_blind_token->obj);
         affine_background_load_palette(affine_background_gfxPal);
         state_info[game_state].substate = BLIND_PANEL_EXIT;
-        timer = TM_ZERO;
+        g_game_vars.timer = TM_ZERO;
     }
 }
 
@@ -3749,16 +3705,15 @@ static void game_round_end_panel_exit()
 {
     // TODO: make heads or tails of what's going on here and replace
     // magic numbers.
-    if (timer < 8)
+    if (g_game_vars.timer < 8)
     {
         main_bg_se_copy_rect_1_tile_vert(TOP_LEFT_PANEL_ANIM_RECT, SCREEN_UP);
 
-        if (timer == 1) // Copied from shop. Feels slightly too niche of a function for me
-                        // personally to make one.
+        if (g_game_vars.timer == 1)
         {
             reset_top_left_panel_bottom_row();
         }
-        else if (timer == 2)
+        else if (g_game_vars.timer == 2)
         {
             int y = 5;
             memset16(&se_mem[MAIN_BG_SBB][32 * (y - 1)], 0x0001, 1);
@@ -3766,18 +3721,19 @@ static void game_round_end_panel_exit()
             memset16(&se_mem[MAIN_BG_SBB][8 + 32 * (y - 1)], 0x0401, 1);
         }
     }
-    else if (timer > FRAMES(20))
+    else if (g_game_vars.timer > FRAMES(20))
     {
         memset16(&pal_bg_mem[REWARD_PANEL_BORDER_PID], 0x1483, 1);
         state_info[game_state].substate = DISPLAY_REWARDS;
-        timer = TM_ZERO;
+        g_game_vars.timer = TM_ZERO;
     }
 }
 
 static inline void game_round_end_print_separator_ellipsis(void)
 {
     int x =
-        (ROUND_END_REWARDS_ELLIPSIS_POS.x + timer - TM_REWARDS_ELLIPSIS_PRINT_START) * TILE_SIZE;
+        (ROUND_END_REWARDS_ELLIPSIS_POS.x + g_game_vars.timer - TM_REWARDS_ELLIPSIS_PRINT_START) *
+        TILE_SIZE;
     int y = (ROUND_END_REWARDS_ELLIPSIS_POS.y) * TILE_SIZE;
 
     tte_printf("#{P:%d,%d; cx:0x%X000}.", x, y, TTE_WHITE_PB);
@@ -3787,7 +3743,7 @@ static inline void game_round_end_print_separator_ellipsis(void)
 static inline void game_round_end_print_hand_reward(int hand_y_offset)
 {
     int hand_y = ROUND_END_REWARDS_ELLIPSIS_POS.y + hand_y_offset;
-    if (timer == TM_DISPLAY_REWARDS_CONT_WAIT)
+    if (g_game_vars.timer == TM_DISPLAY_REWARDS_CONT_WAIT)
     {
         game_round_end_extend_black_panel_down(hand_y);
 
@@ -3801,7 +3757,8 @@ static inline void game_round_end_print_hand_reward(int hand_y_offset)
         );
     }
     // Increment the hand reward text until the hand reward variable is depleted
-    else if (timer > TM_HAND_REWARD_INCR_WAIT && timer % FRAMES(TM_REWARD_INCREMENT_INTERVAL) == 0)
+    else if (g_game_vars.timer > TM_HAND_REWARD_INCR_WAIT &&
+             g_game_vars.timer % FRAMES(TM_REWARD_INCREMENT_INTERVAL) == 0)
     {
         hand_reward--;
         tte_printf(
@@ -3813,7 +3770,7 @@ static inline void game_round_end_print_hand_reward(int hand_y_offset)
         );
         if (hand_reward == 0)
         {
-            interest_start_time = timer + TM_REWARD_DISPLAY_INTERVAL;
+            interest_start_time = g_game_vars.timer + TM_REWARD_DISPLAY_INTERVAL;
         }
     }
 }
@@ -3822,7 +3779,7 @@ static inline void game_round_end_print_interest_reward(int interest_y_offset)
 {
     int interest_y = ROUND_END_REWARDS_ELLIPSIS_POS.y + interest_y_offset;
 
-    if (timer == interest_start_time)
+    if (g_game_vars.timer == interest_start_time)
     {
         game_round_end_extend_black_panel_down(interest_y);
 
@@ -3836,8 +3793,8 @@ static inline void game_round_end_print_interest_reward(int interest_y_offset)
         );
     }
     // Increment the interest reward text until the interest reward variable is depleted
-    else if (timer > interest_start_time + TM_REWARD_DISPLAY_INTERVAL &&
-             timer % FRAMES(TM_REWARD_INCREMENT_INTERVAL) == 0)
+    else if (g_game_vars.timer > interest_start_time + TM_REWARD_DISPLAY_INTERVAL &&
+             g_game_vars.timer % FRAMES(TM_REWARD_INCREMENT_INTERVAL) == 0)
     {
         interest_to_count--;
         tte_printf(
@@ -3872,22 +3829,22 @@ static void game_round_end_display_rewards()
     // Once all rewards are accounted for go to the next state
     if (hand_reward <= 0 && interest_to_count <= 0)
     {
-        timer = TM_ZERO;
+        g_game_vars.timer = TM_ZERO;
         state_info[game_state].substate = DISPLAY_CASHOUT;
     }
-    else if (timer == TM_START_ROUND_END_REWARDS_ANIM)
+    else if (g_game_vars.timer == TM_START_ROUND_END_REWARDS_ANIM)
     {
         game_round_end_extend_black_panel_down(ROUND_END_REWARDS_ELLIPSIS_POS.y);
     }
-    else if (timer < TM_REWARDS_ELLIPSIS_PRINT_END)
+    else if (g_game_vars.timer < TM_REWARDS_ELLIPSIS_PRINT_END)
     {
         game_round_end_print_separator_ellipsis();
     }
-    else if (timer >= TM_DISPLAY_REWARDS_CONT_WAIT && hand_reward > 0)
+    else if (g_game_vars.timer >= TM_DISPLAY_REWARDS_CONT_WAIT && hand_reward > 0)
     {
         game_round_end_print_hand_reward(hand_y_offset);
     }
-    else if (interest_start_time != UNDEFINED && timer >= interest_start_time &&
+    else if (interest_start_time != UNDEFINED && g_game_vars.timer >= interest_start_time &&
              interest_to_count > 0)
     {
         game_round_end_print_interest_reward(interest_y_offset);
@@ -3911,7 +3868,7 @@ static inline void game_round_end_cashout(void)
 
 static void game_round_end_display_cashout()
 {
-    if (timer == FRAMES(40))
+    if (g_game_vars.timer == FRAMES(40))
     {
         // Put the "cash out" button onto the round end panel
         main_bg_se_copy_expand_3x3_rect(CASHOUT_DEST_RECT, CASHOUT_SRC_3X3_RECT_POS);
@@ -3930,12 +3887,12 @@ static void game_round_end_display_cashout()
     }
 
     // Wait until the player presses A to cash out
-    else if (timer > FRAMES(40) && key_hit(SELECT_CARD))
+    else if (g_game_vars.timer > FRAMES(40) && key_hit(SELECT_CARD))
     {
         game_round_end_cashout();
 
         state_info[game_state].substate = DISMISS_ROUND_END_PANEL; // Go to the next state
-        timer = TM_ZERO;
+        g_game_vars.timer = TM_ZERO;
 
         obj_hide(round_end_blind_token->obj);          // Hide the blind token object
         tte_erase_rect_wrapper(BLIND_TOKEN_TEXT_RECT); // Erase the blind token text
@@ -3948,9 +3905,9 @@ static void game_round_end_dismiss_round_end_panel()
     round_end_down.top--;
     main_bg_se_copy_rect_1_tile_vert(round_end_down, SCREEN_DOWN);
 
-    if (timer >= TM_DISMISS_ROUND_END_TM)
+    if (g_game_vars.timer >= TM_DISMISS_ROUND_END_TM)
     {
-        timer = TM_ZERO;
+        g_game_vars.timer = TM_ZERO;
         state_info[game_state].substate = ROUND_END_EXIT;
     }
 }
@@ -4098,14 +4055,14 @@ static void game_shop_intro()
 {
     main_bg_se_copy_rect_1_tile_vert(POP_MENU_ANIM_RECT, SCREEN_UP);
 
-    if (timer == TM_CREATE_SHOP_ITEMS_WAIT)
+    if (g_game_vars.timer == TM_CREATE_SHOP_ITEMS_WAIT)
     {
         game_shop_create_items();
     }
 
-    if (timer >= TM_SHIFT_SHOP_ICON_WAIT) // Shift the shop icon
+    if (g_game_vars.timer >= TM_SHIFT_SHOP_ICON_WAIT) // Shift the shop icon
     {
-        int timer_offset = timer - 6;
+        int timer_offset = g_game_vars.timer - 6;
 
         // TODO: Extract to generic function?
         for (int y = 0; y < timer_offset; y++)
@@ -4120,10 +4077,10 @@ static void game_shop_intro()
         }
     }
 
-    if (timer == TM_END_GAME_SHOP_INTRO)
+    if (g_game_vars.timer == TM_END_GAME_SHOP_INTRO)
     {
         state_info[game_state].substate = GAME_SHOP_ACTIVE;
-        timer = TM_ZERO; // Reset the timer
+        g_game_vars.timer = TM_ZERO; // Reset the timer
     }
 }
 
@@ -4278,7 +4235,7 @@ static void shop_top_row_on_key_transit(SelectionGrid* selection_grid, Selection
 
         // Go to next blind selection game state
         state_info[game_state].substate = GAME_SHOP_EXIT; // Go to the outro sequence state
-        timer = TM_ZERO;                                  // Reset the timer
+        g_game_vars.timer = TM_ZERO;                      // Reset the timer
         reroll_cost = REROLL_BASE_COST;
 
         memcpy16(
@@ -4459,7 +4416,7 @@ static void shop_reroll_row_on_key_transit(SelectionGrid* selection_grid, Select
 // Shop menu input and selection
 static void game_shop_process_user_input()
 {
-    if (timer == TM_SHOP_PRC_INPUT_START)
+    if (g_game_vars.timer == TM_SHOP_PRC_INPUT_START)
     {
         // TODO: Move to on_init?
         // The selection grid is initialized outside of bounds and moved
@@ -4489,7 +4446,7 @@ static void game_shop_outro()
 
     // TODO: make heads or tails of what's going on here and replace
     // magic numbers.
-    if (timer == 1)
+    if (g_game_vars.timer == 1)
     {
         tte_erase_rect_wrapper(SHOP_PRICES_TEXT_RECT); // Erase the shop prices text
 
@@ -4505,7 +4462,7 @@ static void game_shop_outro()
 
         reset_top_left_panel_bottom_row();
     }
-    else if (timer == 2)
+    else if (g_game_vars.timer == 2)
     {
         int y = 5;
         memset16(&se_mat[MAIN_BG_SBB][y - 1][0], 0x0001, 1);
@@ -4513,10 +4470,10 @@ static void game_shop_outro()
         memset16(&se_mat[MAIN_BG_SBB][y - 1][8], SE_HFLIP | 0x0001, 1);
     }
 
-    if (timer >= MENU_POP_OUT_ANIM_FRAMES)
+    if (g_game_vars.timer >= MENU_POP_OUT_ANIM_FRAMES)
     {
         state_info[game_state].substate = GAME_SHOP_MAX; // Go to the next state
-        timer = TM_ZERO;                                 // Reset the timer
+        g_game_vars.timer = TM_ZERO;                     // Reset the timer
     }
 }
 
@@ -4563,7 +4520,7 @@ static void game_shop_on_update()
         }
     }
 
-    if (timer % 20 == 0)
+    if (g_game_vars.timer % 20 == 0)
     {
         game_shop_lights_anim_frame();
     }
@@ -4746,17 +4703,17 @@ static void game_blind_select_start_anim_seq()
         );
     }
 
-    if (timer == TM_END_ANIM_SEQ)
+    if (g_game_vars.timer == TM_END_ANIM_SEQ)
     {
         game_blind_select_print_blinds_reqs_and_rewards();
         state_info[game_state].substate = BLIND_SELECT;
-        timer = TM_ZERO; // Reset the timer
+        g_game_vars.timer = TM_ZERO; // Reset the timer
     }
 }
 
 static void game_blind_select_handle_input()
 {
-    if (timer == TM_BLIND_SELECT_START && current_blind > BLIND_TYPE_BIG)
+    if (g_game_vars.timer == TM_BLIND_SELECT_START && current_blind == BLIND_TYPE_BOSS)
     {
         selection_y = 0;
     }
@@ -4778,7 +4735,7 @@ static void game_blind_select_handle_input()
         {
             play_sfx(SFX_BUTTON, MM_BASE_PITCH_RATE, BUTTON_SFX_VOLUME);
             state_info[game_state].substate = BLIND_SELECTED_ANIM_SEQ;
-            timer = TM_ZERO;
+            g_game_vars.timer = TM_ZERO;
             ++round;
             display_round();
         }
@@ -4809,7 +4766,7 @@ static void game_blind_select_handle_input()
 
             game_blind_select_print_blinds_reqs_and_rewards();
 
-            timer = TM_ZERO;
+            g_game_vars.timer = TM_ZERO;
         }
     }
 
@@ -4835,7 +4792,7 @@ static void game_blind_select_handle_input()
 
 static void game_blind_select_selected_anim_seq()
 {
-    if (timer < 15)
+    if (g_game_vars.timer < 15)
     {
         Rect blinds_rect = POP_MENU_ANIM_RECT;
         blinds_rect.top -= 1; // Because of the raised blind
@@ -4850,7 +4807,7 @@ static void game_blind_select_selected_anim_seq()
             );
         }
     }
-    else if (timer >= MENU_POP_OUT_ANIM_FRAMES)
+    else if (g_game_vars.timer >= MENU_POP_OUT_ANIM_FRAMES)
     {
         for (int i = 0; i < NUM_BLINDS_PER_ANTE; i++)
         {
@@ -4858,20 +4815,20 @@ static void game_blind_select_selected_anim_seq()
         }
 
         state_info[game_state].substate = DISPLAY_BLIND_PANEL; // Reset the state
-        timer = TM_ZERO;                                       // Reset the timer
+        g_game_vars.timer = TM_ZERO;                           // Reset the timer
     }
 }
 
 static void game_blind_select_display_blind_panel()
 {
-    if (timer >= TM_DISP_BLIND_PANEL_FINISH)
+    if (g_game_vars.timer >= TM_DISP_BLIND_PANEL_FINISH)
     {
         state_info[game_state].substate = BLIND_SELECT_MAX;
         return;
     }
 
     // Switches to the selecting background and clears the blind panel area
-    if (timer == TM_DISP_BLIND_PANEL_START)
+    if (g_game_vars.timer == TM_DISP_BLIND_PANEL_START)
     {
         change_background(BG_CARD_SELECTING);
 
@@ -4884,9 +4841,9 @@ static void game_blind_select_display_blind_panel()
     }
 
     // Shift the blind panel down onto screen
-    for (int y = 0; y < timer; y++)
+    for (int y = 0; y < g_game_vars.timer; y++)
     {
-        int y_from = 26 + y - timer;
+        int y_from = 26 + y - g_game_vars.timer;
         int y_to = 0 + y;
 
         Rect from = {0, y_from, 8, y_from};
@@ -4902,17 +4859,15 @@ static void game_blind_select_on_exit()
     background = UNDEFINED;
 }
 
-static inline void game_start(void)
+void game_start()
 {
-    set_seed(rng_seed);
+    set_seed(g_game_vars.rng_seed);
     // set_seed(9); // 9 is a full house
 
     affine_background_change_background(AFFINE_BG_GAME);
 
     // Normally I would just cache these and hide/unhide but I didn't feel like dealing with
     // defining a layer for it
-    card_destroy(&main_menu_ace->card);
-    card_object_destroy(&main_menu_ace);
 
     hands = max_hands;
     discards = max_discards;
@@ -4965,57 +4920,6 @@ static inline void game_start(void)
     game_change_state(GAME_STATE_BLIND_SELECT);
 }
 
-static void game_main_menu_on_update()
-{
-    change_background(BG_MAIN_MENU);
-
-    card_object_update(main_menu_ace);
-    main_menu_ace->sprite_object->trotation = lu_sin((timer << 8) / 2) / 3;
-    main_menu_ace->sprite_object->rotation = main_menu_ace->sprite_object->trotation;
-
-    // Seed randomization
-    rng_seed++;
-    // If the keys have changed, make it more pseudo-random
-    if (key_curr_state() != key_prev_state())
-    {
-        rng_seed *= 2;
-    }
-
-    if (key_hit(KEY_LEFT))
-    {
-        if (selection_x > 0)
-        {
-            selection_x--;
-        }
-    }
-    else if (key_hit(KEY_RIGHT))
-    {
-        if (selection_x < MAIN_MENU_IMPLEMENTED_BUTTONS - 1)
-        {
-            selection_x++;
-        }
-    }
-
-    if (selection_x == MAIN_MENU_PLAY_BTN_IDX)
-    {
-        memset16(&pal_bg_mem[MAIN_MENU_PLAY_BUTTON_OUTLINE_PID], BTN_HIGHLIGHT_COLOR, 1);
-
-        if (key_hit(SELECT_CARD))
-        {
-            play_sfx(SFX_BUTTON, MM_BASE_PITCH_RATE, BUTTON_SFX_VOLUME);
-            game_start();
-        }
-    }
-    else
-    {
-        memcpy16(
-            &pal_bg_mem[MAIN_MENU_PLAY_BUTTON_OUTLINE_PID],
-            &pal_bg_mem[MAIN_MENU_PLAY_BUTTON_MAIN_COLOR_PID],
-            1
-        );
-    }
-}
-
 static void game_over_anim_frame(void)
 {
     main_bg_se_move_rect_1_tile_vert(GAME_OVER_ANIM_RECT, SCREEN_UP);
@@ -5032,11 +4936,11 @@ static inline void game_over_process_user_input()
 
 static void game_lose_on_update()
 {
-    if (timer < GAME_OVER_ANIM_FRAMES)
+    if (g_game_vars.timer < GAME_OVER_ANIM_FRAMES)
     {
         game_over_anim_frame();
     }
-    else if (timer == GAME_OVER_ANIM_FRAMES)
+    else if (g_game_vars.timer == GAME_OVER_ANIM_FRAMES)
     {
         tte_printf(
             "#{P:%d,%d; cx:0x%X000}GAME OVER",
@@ -5102,11 +5006,11 @@ static void game_over_on_exit()
 
 static void game_win_on_update()
 {
-    if (timer < GAME_OVER_ANIM_FRAMES)
+    if (g_game_vars.timer < GAME_OVER_ANIM_FRAMES)
     {
         game_over_anim_frame();
     }
-    else if (timer == GAME_OVER_ANIM_FRAMES)
+    else if (g_game_vars.timer == GAME_OVER_ANIM_FRAMES)
     {
         tte_printf(
             "#{P:%d,%d; cx:0x%X000}YOU WIN",
