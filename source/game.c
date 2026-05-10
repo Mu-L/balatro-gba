@@ -661,8 +661,6 @@ void game_init()
 
     jokers_available_to_shop_init();
 
-    load_game();
-
     hands = max_hands;
     discards = max_discards;
     g_game_vars.timer = TM_ZERO;
