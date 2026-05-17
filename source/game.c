@@ -561,7 +561,7 @@ static inline void discarded_jokers_update_loop(void)
 
 static inline void held_jokers_update_loop(void)
 {
-    const int spacing_lut[MAX_JOKERS_HELD_SIZE][MAX_JOKERS_HELD_SIZE] = {
+    static const int spacing_lut[MAX_JOKERS_HELD_SIZE][MAX_JOKERS_HELD_SIZE] = {
         {0,  0,   0,   0,   0  },
         {13, -13, 0,   0,   0  },
         {26, 0,   -26, 0,   0  },
@@ -1838,6 +1838,7 @@ static inline void card_draw(void)
 
     card_object->sprite_object->x = deck_x;
     card_object->sprite_object->y = deck_y;
+    sprite_position(card_object->sprite_object->sprite, fx2int(deck_x), fx2int(deck_y));
 
     hand[++hand_top] = card_object;
 
@@ -2828,10 +2829,17 @@ static inline void cards_in_hand_update_loop(void)
                     {
                         hand_y -= int2fx(CARD_FOCUSED_SEL_Y);
                     }
-
                     if (i != selected_card_idx && hand[i]->sprite_object->y > hand_y)
                     {
                         hand[i]->sprite_object->y = hand_y;
+                        sprite_position(
+                            hand[i]->sprite_object->sprite,
+                            fx2int(hand[i]->sprite_object->x),
+                            fx2int(hand_y)
+                        );
+                        // Set target y to match y. Ensures target is updated even when vy becomes
+                        // 0, preventing immediate snap back.
+                        hand[i]->sprite_object->ty = hand_y;
                         hand[i]->sprite_object->vy = 0;
                     }
 
