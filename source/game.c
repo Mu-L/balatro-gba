@@ -1213,12 +1213,9 @@ void change_background_legacy(enum BackgroundId id)
             {
                 main_bg_se_copy_rect(BIG_BLIND_TITLE_SRC_RECT, TOP_LEFT_BLIND_TITLE_POINT);
             }
-            else if (g_game_vars.current_blind > BLIND_TYPE_BIG)
+            else if (g_game_vars.current_blind >= BLIND_TYPE_BOSS)
             {
                 main_bg_se_copy_rect(BOSS_BLIND_TITLE_SRC_RECT, TOP_LEFT_BLIND_TITLE_POINT);
-                affine_background_set_color(
-                    blind_get_color(g_game_vars.current_blind, BLIND_SHADOW_COLOR_INDEX)
-                );
             }
 
             bg_copy_current_item_to_top_left_panel();
