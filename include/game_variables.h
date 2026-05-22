@@ -7,6 +7,7 @@
 #define GAME_VARIABLES_H
 
 #include "blind.h"
+#include "random.h"
 
 #include <tonc.h>
 
@@ -37,8 +38,7 @@ typedef struct
     // Internal variables
 
     s32 timer; // This might already exist in libtonc but idk so i'm just making my own
-    u32 rng_seed;
-    u32 rng_step; // Position in the rng sequence.
+    RngInfo rng_info;
 
     // Variables visible by the player
 

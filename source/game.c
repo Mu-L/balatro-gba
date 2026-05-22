@@ -21,6 +21,7 @@
 #include "joker.h"
 #include "layout.h"
 #include "list.h"
+#include "random.h"
 #include "save.h"
 #include "selection_grid.h"
 #include "soundbank.h"
@@ -299,7 +300,8 @@ static ContainedHandTypes _contained_hands = {0};
 // Initialization of the global vars
 // clang-format off
 GameVariables g_game_vars = {
-    .timer = 0, .rng_seed = 0, .rng_step = 0,
+    .timer = 0,
+    .rng_info = {0, 0},
 
     .round = 0, .ante = 0, .money = 0,
 
@@ -629,6 +631,8 @@ static inline void jokers_update_loop(void)
 
 void game_update()
 {
+    rng_update();
+
     g_game_vars.timer++;
 
     jokers_update_loop();
@@ -652,12 +656,6 @@ void game_change_state(enum GameState new_game_state)
 
         game_state = new_game_state;
     }
-}
-
-u32 get_rand()
-{
-    g_game_vars.rng_step++;
-    return rand();
 }
 
 CardObject** get_hand_array(void)
@@ -1429,7 +1427,7 @@ static inline void deck_shuffle(void)
 {
     for (int i = deck_top; i > 0; i--)
     {
-        int j = get_rand() % (i + 1);
+        int j = rng_get_u32() % (i + 1);
         Card* temp = deck[i];
         deck[i] = deck[j];
         deck[j] = temp;
@@ -1503,14 +1501,6 @@ static void game_round_on_init(void)
      * otherwise or for the buttons.
      */
     game_playing_selection_grid.selection = GAME_PLAYING_INIT_SEL;
-}
-
-// General functions
-static inline void set_seed(int seed)
-{
-    srand(seed);
-    g_game_vars.rng_seed = seed;
-    g_game_vars.rng_step = 0;
 }
 
 // Playing state functions
@@ -1670,7 +1660,7 @@ static bool game_playing_hand_row_on_selection_changed(
              */
             play_sfx(
                 SFX_CARD_FOCUS,
-                MM_BASE_PITCH_RATE + get_rand() % CARD_FOCUS_SFX_PITCH_OFFSET_RANGE,
+                MM_BASE_PITCH_RATE + rng_get_u32() % CARD_FOCUS_SFX_PITCH_OFFSET_RANGE,
                 SFX_DEFAULT_VOLUME
             );
         }
@@ -1690,7 +1680,7 @@ static bool game_playing_hand_row_on_selection_changed(
              */
             play_sfx(
                 SFX_CARD_FOCUS,
-                MM_BASE_PITCH_RATE + get_rand() % CARD_FOCUS_SFX_PITCH_OFFSET_RANGE,
+                MM_BASE_PITCH_RATE + rng_get_u32() % CARD_FOCUS_SFX_PITCH_OFFSET_RANGE,
                 SFX_DEFAULT_VOLUME
             );
         }
@@ -3020,8 +3010,7 @@ static void game_playing_on_update(void)
 
 void game_start(void)
 {
-    // set_seed(9); // 9 is a full house
-    set_seed(g_game_vars.rng_seed);
+    rng_shuffle_seed();
 
     affine_background_change_background(AFFINE_BG_GAME);
 
