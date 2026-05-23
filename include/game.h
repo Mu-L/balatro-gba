@@ -40,9 +40,6 @@ typedef struct CardObject CardObject;
 typedef struct Card Card;
 typedef struct JokerObject JokerObject;
 
-typedef void (*GameStateCallback)(void);
-typedef void (*SubStateActionFn)(void);
-
 // Enum value names in ../include/def_state_info_table.h
 enum GameState
 {
@@ -67,7 +64,7 @@ enum PlayState
 };
 
 // Game functions
-void game_init();
+void game_init(void);
 
 /**
  * @brief Called when exiting the Game Over screen (both win or lose) to reset game variables
@@ -77,9 +74,9 @@ void game_init();
  * and shouldn't be called from other states, otherwise some data such as shop jokers
  * may not be properly reset.
  */
-void game_reset();
+void game_reset(void);
 
-void game_update();
+void game_update(void);
 void game_change_state(enum GameState new_game_state);
 
 CardObject** get_played_array(void);

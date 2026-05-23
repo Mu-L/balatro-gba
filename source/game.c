@@ -27,6 +27,7 @@
 #include "soundbank.h"
 #include "splash_screen.h"
 #include "sprite.h"
+#include "state_machine.h"
 #include "timer.h"
 #include "tonc_memdef.h"
 #include "util.h"
@@ -85,15 +86,6 @@
 #define GAME_PLAYING_NUM_BOTTOM_BTNS 2
 
 #define EXPIRE_ANIMATION_FRAME_COUNT 3
-
-// Used as a No Operation for game states that have no init and/or exit function.
-// ricfehr3 did the work of determining whether a noop or a NULL check was more
-// efficient. Well, this is the answer.
-// Thanks!
-// https://github.com/cellos51/balatro-gba/issues/137#issuecomment-3322485129
-static void noop(void)
-{
-}
 
 // These functions need to be forward declared
 // so they're visible to the state_info array,
@@ -212,8 +204,20 @@ static const BG_POINT HAND_PLAY_POS         = {120,     70};
 // variable and handling in common.c once the related refactor is finished
 static enum BackgroundId background_legacy = BG_NONE;
 
+static StateInfo state_info[] = {
+#define DEF_STATE_INFO(stateEnum, init_fn, update_fn, exit_fn) \
+    {.on_init = init_fn, .on_update = update_fn, .on_exit = exit_fn},
+#include "../include/def_state_info_table.h"
+#undef DEF_STATE_INFO
+};
+
+static StateMachine game_sm = {
+    .state_infos = &state_info[0],
+    .num_infos = GAME_STATE_MAX,
+};
+
 // clang-format off
-SelectionGridRow game_playing_selection_rows[] = {
+static SelectionGridRow game_playing_selection_rows[] = {
     {
         0,
         jokers_sel_row_get_size,
@@ -240,14 +244,14 @@ SelectionGridRow game_playing_selection_rows[] = {
 
 static const Selection GAME_PLAYING_INIT_SEL = {0, 1};
 
-SelectionGrid game_playing_selection_grid = {
+static SelectionGrid game_playing_selection_grid = {
     game_playing_selection_rows,
     NUM_ELEM_IN_ARR(game_playing_selection_rows),
     GAME_PLAYING_INIT_SEL
 };
 
 // Array of buttons by horizontal selection index (x)
-Button game_playing_buttons[] = {
+static Button game_playing_buttons[] = {
     {PLAY_HAND_BTN_BORDER_PAL_IDX,    PLAY_HAND_BTN_PAL_IDX, game_playing_play_hand_on_pressed,    can_play_hand   },
     {SORT_BY_RANK_BTN_BORDER_PAL_IDX, SORT_BTNS_PAL_IDX,     game_playing_sort_by_rank_on_pressed, NULL            },
     {SORT_BY_SUIT_BTN_BORDER_PAL_IDX, SORT_BTNS_PAL_IDX,     game_playing_sort_by_suit_on_pressed, NULL            },
@@ -258,8 +262,6 @@ Button game_playing_buttons[] = {
 static const int HAND_SPACING_LUT[MAX_HAND_SIZE] =
     {28, 28, 28, 28, 27, 21, 18, 15, 13, 12, 10, 9, 9, 8, 8, 7};
 
-// The current game state, this is used to determine what the game is doing at any given time
-static enum GameState game_state = GAME_STATE_UNDEFINED;
 static enum PlayState play_state = PLAY_STARTING;
 
 // Initialization of the global vars
@@ -292,28 +294,6 @@ GameVariables g_game_vars = {
     .sound_volume = DEFAULT_SOUND_VOLUME,
 };
 // clang-format on
-
-typedef struct
-{
-    int substate;
-    GameStateCallback on_init;
-    GameStateCallback on_update;
-    GameStateCallback on_exit;
-} StateInfo;
-
-StateInfo state_info[] = {
-#define DEF_STATE_INFO(stateEnum, init_fn, update_fn, exit_fn) \
-    {.on_init = init_fn, .on_update = update_fn, .on_exit = exit_fn, .substate = 0},
-#include "../include/def_state_info_table.h"
-#undef DEF_STATE_INFO
-};
-
-// The sprite that displays the blind when in "GAME_PLAYING/GAME_ROUND_END" state
-
-// The sprite that displays the blind when in "GAME_ROUND_END" state
-
-// Red deck default (can later be moved to a deck.h file or something)
-// Set in game_init and game_round_init
 
 static u32 temp_score = 0; // This is the score that shows in the same spot as the hand type.
 static bool score_flames_active = false;
@@ -425,11 +405,13 @@ static inline void jokers_available_to_shop_init(void)
 
 void game_init()
 {
+    state_machine_remove(&game_sm);
+    state_machine_register(&game_sm);
     // Initialize all jokers list once
-    _owned_jokers_list = list_create();
-    _discarded_jokers_list = list_create();
-    _expired_jokers_list = list_create();
-    _shop_jokers_list = list_create();
+    _owned_jokers_list = list_init();
+    _discarded_jokers_list = list_init();
+    _expired_jokers_list = list_init();
+    _shop_jokers_list = list_init();
     // TODO: Move this to an initialization of the play scoring states
     _joker_scored_itr = list_itr_create(&_owned_jokers_list);
 
@@ -595,25 +577,14 @@ void game_update()
 
     jokers_update_loop();
 
-    state_info[game_state].on_update();
+    state_machine_update();
 }
 
 void game_change_state(enum GameState new_game_state)
 {
     g_game_vars.timer = TM_ZERO; // Reset the timer
 
-    if (game_state >= 0 && game_state < GAME_STATE_MAX)
-    {
-        state_info[game_state].substate = 0;
-        state_info[game_state].on_exit();
-    }
-
-    if (new_game_state >= 0 && new_game_state < GAME_STATE_MAX)
-    {
-        state_info[new_game_state].on_init();
-
-        game_state = new_game_state;
-    }
+    state_machine_change_state(&game_sm, new_game_state);
 }
 
 CardObject** get_played_array(void)

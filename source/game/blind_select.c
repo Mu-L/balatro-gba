@@ -11,17 +11,19 @@
 #include "layout.h"
 #include "soundbank.h"
 #include "sprite.h"
+#include "state_machine.h"
 #include "timer.h"
 #include "util.h"
 
 #include <maxmod.h>
 
-#define BLIND_SELECT_BTN_PID                 15
-#define TM_DISP_BLIND_PANEL_FINISH           7
-#define TM_DISP_BLIND_PANEL_START            1
-#define BLIND_SKIP_BTN_PID                   5
-#define BLIND_SKIP_BTN_SELECTED_BORDER_PID   10
-#define BLIND_SELECT_BTN_SELECTED_BORDER_PID 18
+static const u32 BLIND_SELECT_BTN_PID = 15;
+static const u32 BLIND_SKIP_BTN_PID = 5;
+static const u32 BLIND_SKIP_BTN_SELECTED_BORDER_PID = 10;
+static const u32 BLIND_SELECT_BTN_SELECTED_BORDER_PID = 18;
+
+static const u32 TM_DISP_BLIND_PANEL_FINISH = 7;
+static const u32 TM_DISP_BLIND_PANEL_START = 1;
 
 static int timer;
 
@@ -29,6 +31,7 @@ static void game_blind_select_start_anim_seq(void);
 static void game_blind_select_handle_input(void);
 static void game_blind_select_selected_anim_seq(void);
 static void game_blind_select_display_blind_panel(void);
+static void game_blind_select_exit(void);
 static Rect game_blind_select_get_req_score_rect(enum BlindTokens blind);
 static void game_blind_select_print_blinds_reqs_and_rewards(void);
 static enum BlindType get_blind_type_from_token(enum BlindTokens blind);
@@ -40,15 +43,22 @@ enum BlindSelectState
     BLIND_SELECT,
     BLIND_SELECTED_ANIM_SEQ,
     DISPLAY_BLIND_PANEL,
-    BLIND_SELECT_MAX
+    BLIND_SELECT_EXIT,
+    BLIND_SELECT_MAX,
 };
 
 // TODO: this will be refactored into common state machine
-static const SubStateActionFn blind_select_state_actions[] = {
-    game_blind_select_start_anim_seq,
-    game_blind_select_handle_input,
-    game_blind_select_selected_anim_seq,
-    game_blind_select_display_blind_panel
+static StateInfo state_info[] = {
+    STATE_INFO_UPDATE_FN_ONLY(game_blind_select_start_anim_seq),
+    STATE_INFO_UPDATE_FN_ONLY(game_blind_select_handle_input),
+    STATE_INFO_UPDATE_FN_ONLY(game_blind_select_selected_anim_seq),
+    STATE_INFO_UPDATE_FN_ONLY(game_blind_select_display_blind_panel),
+    STATE_INFO_UPDATE_FN_ONLY(game_blind_select_exit),
+};
+
+static StateMachine blind_select_sm = {
+    .state_infos = &state_info[0],
+    .num_infos = BLIND_SELECT_MAX,
 };
 
 // clang-format off
@@ -74,8 +84,6 @@ static const u32 SKIP_ROW = 1;
 static int selection_x = 0;
 static int selection_y = 0;
 
-static enum BlindSelectState substate;
-
 static Sprite* blind_select_tokens[NUM_BLINDS_PER_ANTE] = {NULL};
 
 static void game_blind_select_start_anim_seq()
@@ -95,7 +103,7 @@ static void game_blind_select_start_anim_seq()
     if (timer == TM_END_ANIM_SEQ)
     {
         game_blind_select_print_blinds_reqs_and_rewards();
-        substate = BLIND_SELECT;
+        state_machine_change_state(&blind_select_sm, BLIND_SELECT);
         timer = TM_ZERO; // Reset the timer
     }
 }
@@ -191,7 +199,7 @@ static void game_blind_select_handle_input()
         {
             case BLIND_ROW:
                 play_sfx(SFX_BUTTON, MM_BASE_PITCH_RATE, BUTTON_SFX_VOLUME);
-                substate = BLIND_SELECTED_ANIM_SEQ;
+                state_machine_change_state(&blind_select_sm, BLIND_SELECTED_ANIM_SEQ);
                 timer = TM_ZERO;
                 ++g_game_vars.round;
                 display_round();
@@ -258,8 +266,8 @@ static void game_blind_select_selected_anim_seq()
             obj_hide(blind_select_tokens[i]->obj);
         }
 
-        substate = DISPLAY_BLIND_PANEL; // Reset the state
-        timer = TM_ZERO;                // Reset the timer
+        timer = TM_ZERO;
+        state_machine_change_state(&blind_select_sm, DISPLAY_BLIND_PANEL);
     }
 }
 
@@ -267,7 +275,7 @@ static void game_blind_select_display_blind_panel()
 {
     if (timer >= TM_DISP_BLIND_PANEL_FINISH)
     {
-        substate = BLIND_SELECT_MAX;
+        state_machine_change_state(&blind_select_sm, BLIND_SELECT_EXIT);
         return;
     }
 
@@ -300,6 +308,12 @@ static void game_blind_select_display_blind_panel()
 
         main_bg_se_copy_rect(from, to);
     }
+}
+
+static void game_blind_select_exit(void)
+{
+    reset_background();
+    game_change_state(GAME_STATE_PLAYING);
 }
 
 static Rect game_blind_select_get_req_score_rect(enum BlindTokens blind)
@@ -441,7 +455,8 @@ static void blind_tokens_init()
 void game_blind_select_on_init(void)
 {
     timer = TM_ZERO;
-    substate = START_ANIM_SEQ;
+    state_machine_register(&blind_select_sm);
+    state_machine_change_state(&blind_select_sm, START_ANIM_SEQ);
 
     selection_x = 0;
     selection_y = 0;
@@ -461,14 +476,6 @@ void game_blind_select_on_init(void)
 void game_blind_select_on_update(void)
 {
     timer++;
-    if (substate == BLIND_SELECT_MAX)
-    {
-        reset_background();
-        game_change_state(GAME_STATE_PLAYING);
-        return;
-    }
-
-    blind_select_state_actions[substate]();
 }
 
 void game_blind_select_on_exit(void)
@@ -483,7 +490,7 @@ void game_blind_select_on_exit(void)
     reset_background();
     selection_y = 0;
 
-    g_game_vars.timer = TM_ZERO;
+    state_machine_remove(&blind_select_sm);
 }
 
 void game_blind_select_change_background(void)
