@@ -27,6 +27,8 @@
 #define MAX_HANDS    4
 #define MAX_DISCARDS 4
 
+#define DEFAULT_HAND_SIZE 8
+
 /**
  * @brief A central location for all game variables.
  *
@@ -45,6 +47,7 @@ typedef struct
     s32 round;
     s32 ante;
     s32 money;
+    s32 hand_size;
 
     // Blind variables
 
