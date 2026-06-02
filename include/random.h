@@ -13,11 +13,6 @@
 #include <tonc.h>
 
 /**
- * @brief Hex value of "ZZZZZZ" in base 36
- */
-#define MAX_SEED 0x81BF0FFF
-
-/**
  * @brief Information to track and restore RNG state
  */
 typedef struct
@@ -41,7 +36,7 @@ void rng_update(void);
 
 /**
  * @brief Set the rng seed to the chosen value, and reset the step counter to 0.
- *         The seed will be capped at `MAX_SEED` for compatibility with the Seed Input screen
+ *         The seed will be capped at `MAX_BASE36` for compatibility with the Seed Input screen
  *         used to choose a seed for seeded runs.
  *
  * @param seed the new RNG seed

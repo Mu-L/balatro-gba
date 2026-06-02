@@ -102,7 +102,7 @@ void game_main_menu_change_background(void)
 void game_main_menu_on_init(void)
 {
     affine_background_change_background(AFFINE_BG_MAIN_MENU);
-    change_background(BG_MAIN_MENU, false);
+    change_background(BG_MAIN_MENU, true);
     main_menu_ace = card_object_new(card_new(SPADES, ACE));
     card_object_set_sprite(main_menu_ace, 0);
     main_menu_ace->sprite_object->sprite->obj->attr0 |= ATTR0_AFF_DBL;
@@ -208,7 +208,7 @@ static void main_menu_on_key_transit(SelectionGrid* selection_grid, Selection* s
 
 static void play_on_pressed(void)
 {
-    game_change_state(GAME_STATE_GAME_START);
+    game_change_state(GAME_STATE_RUN_SETUP);
 }
 
 static void options_on_pressed(void)

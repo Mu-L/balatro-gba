@@ -14,6 +14,7 @@
 #include "game/main_menu.h"
 #include "game/options_menu.h"
 #include "game/round_end.h"
+#include "game/run_setup.h"
 #include "game/shop.h"
 #include "game_variables.h"
 #include "graphic_utils.h"
@@ -266,8 +267,8 @@ static enum PlayState play_state = PLAY_STARTING;
 GameVariables g_game_vars = {
     .timer = 0, .rng_info = {0, 0},
 
-    .round = 0, .ante = 0, .money = 0,
-    .hand_size = DEFAULT_HAND_SIZE,
+    .round = 0, .ante = 0, .money = 0, .hand_size = DEFAULT_HAND_SIZE,
+    .deck = DECK_TYPE_RED,
 
     .current_blind = BLIND_TYPE_SMALL,
     .next_boss_blind = BLIND_TYPE_BIG,
@@ -2547,8 +2548,6 @@ static void game_playing_on_update(void)
 
 void game_start(void)
 {
-    rng_shuffle_seed();
-
     affine_background_change_background(AFFINE_BG_GAME);
 
     g_game_vars.hands = MAX_HANDS;

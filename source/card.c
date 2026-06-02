@@ -12,6 +12,7 @@
 // Card Sprites and Palettes
 #include "deck_big_gfx.h"
 #include "deck_gfx.h"
+#include "decks_face_down_gfx.h"
 #include "high_contrast_deck_pal_gfx.h"
 
 // Card sprites lookup table. First index is the suit, second index is the rank. The value is the
@@ -22,20 +23,27 @@ const static u16 _card_sprite_lut[NUM_SUITS][NUM_RANKS] = {
     {416, 432, 448, 464, 480, 496, 512, 528, 544, 560, 576, 592, 608},
     {624, 640, 656, 672, 688, 704, 720, 736, 752, 768, 784, 800, 816}
 };
+// Deck sprites lookup table. Index is the deck Id. The value is the tile index.
+const static u16 _deck_sprite_lut[DECK_TYPE_MAX] = {0, 16, 32, 48, 64, 80};
 
 bool high_contrast = DEFAULT_HIGH_CONTRAST;
 bool more_readable = DEFAULT_MORE_READABLE;
+
+void card_init()
+{
+    GRIT_CPY(&pal_obj_mem[DECK_SPRITES_PB * PAL_ROW_LEN], decks_face_down_gfxPal);
+}
 
 void set_cards_high_contrast(bool enable)
 {
     high_contrast = enable;
     if (high_contrast)
     {
-        GRIT_CPY(&pal_obj_mem[CARD_PB], high_contrast_deck_pal_gfxPal);
+        GRIT_CPY(&pal_obj_mem[CARD_PB * PAL_ROW_LEN], high_contrast_deck_pal_gfxPal);
     }
     else
     {
-        GRIT_CPY(&pal_obj_mem[CARD_PB], deck_gfxPal);
+        GRIT_CPY(&pal_obj_mem[CARD_PB * PAL_ROW_LEN], deck_gfxPal);
     }
 }
 
@@ -130,7 +138,25 @@ void card_object_set_sprite(CardObject* card_object, int layer)
         ATTR0_SQUARE | ATTR0_4BPP | ATTR0_AFF,
         ATTR1_SIZE_32,
         tile_index,
-        0,
+        CARD_PB,
+        layer + CARD_STARTING_LAYER
+    );
+    sprite_object_set_sprite(card_object->sprite_object, sprite);
+}
+
+void card_object_set_sprite_face_down(CardObject* card_object, enum DeckType deck, int layer)
+{
+    int tile_index = CARD_TID + (layer * CARD_SPRITE_OFFSET);
+    memcpy32(
+        &tile_mem[TILE_MEM_OBJ_CHARBLOCK0_IDX][tile_index],
+        &decks_face_down_gfxTiles[_deck_sprite_lut[deck] * TILE_SIZE],
+        TILE_SIZE * CARD_SPRITE_OFFSET
+    );
+    Sprite* sprite = sprite_new(
+        ATTR0_SQUARE | ATTR0_4BPP | ATTR0_AFF,
+        ATTR1_SIZE_32,
+        tile_index,
+        DECK_SPRITES_PB,
         layer + CARD_STARTING_LAYER
     );
     sprite_object_set_sprite(card_object->sprite_object, sprite);
