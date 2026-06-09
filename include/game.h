@@ -79,6 +79,7 @@ void game_reset(void);
 
 void game_update(void);
 void game_change_state(enum GameState new_game_state);
+enum GameState game_get_state(void);
 
 CardObject** get_played_array(void);
 int get_played_top(void);

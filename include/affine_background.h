@@ -26,7 +26,7 @@
  * @def AFFINE_BG_PB
  * @brief The starting index of the background palette.
  */
-#define AFFINE_BG_PB (PAL_ROW_LEN * 10)
+#define AFFINE_BG_PB (PAL_ROW_LEN * 15)
 
 /**
  * @brief An ID to specify background rendering types.

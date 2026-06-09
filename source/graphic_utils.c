@@ -2,6 +2,7 @@
 
 #include "layout.h"
 
+#include <stdio.h>
 #include <string.h>
 #include <tonc_core.h>
 #include <tonc_math.h>
@@ -506,4 +507,139 @@ void reset_top_left_panel_bottom_row(void)
     // Use the source rect height to offset to the bottom row point
     top_left_panel_bottom_row_pos.y += rect_height(&TOP_LEFT_ITEM_SRC_RECT) - 1;
     main_bg_se_copy_rect(TOP_LEFT_PANEL_BOTTOM_ROW_RESET_RECT, top_left_panel_bottom_row_pos);
+}
+
+// Width of the screen, in nb of tiles
+#define MAX_LINE_TEXT_LENGTH 30
+
+int tte_printf_justified_in_rect(
+    const char* raw_text,
+    Rect dst_rect,
+    enum TextJustifyFlag justify_direction,
+    enum ScreenHorzDir bias_direction,
+    bool do_print
+)
+{
+    // These are the actual lengths of the line/token, which take the {TAGS} into account
+
+    int raw_text_len = strlen(raw_text);
+
+    int line_start = 0;
+    int token_start = 0;
+    int token_len = 0;
+
+    // These lengths correspond to what will be visible on screen
+
+    int max_line_text_len = rect_width(&dst_rect);
+
+    int line_text_len = 0;
+    int token_text_len = 0;
+
+    int line_x = 0;
+    int line_y = 0;
+
+    // Will exit when there are no more words
+    while (line_start < raw_text_len)
+    {
+        // Need to do everything by hand, as it seems tte_printf does NOT stop at \0
+        token_len = 0;
+        token_text_len = 0;
+
+        // Parse the `raw_text` and
+        while (line_text_len <= max_line_text_len && token_start < raw_text_len)
+        {
+            int current_char = token_start + token_len;
+
+            // Handle tags
+            if (raw_text[current_char] == '#' && (current_char + 1) < raw_text_len &&
+                raw_text[current_char + 1] == '{')
+            {
+                while (current_char < raw_text_len && raw_text[current_char] != '}')
+                {
+                    token_len++;
+                    current_char++;
+                }
+
+                if (current_char < raw_text_len)
+                {
+                    token_len++;
+                    current_char++;
+                }
+            }
+
+            // Handle special cases
+
+            // End of word/text detected
+            if (raw_text[current_char] == ' ' || raw_text[current_char] == '\0')
+            {
+                token_start = current_char + 1;
+                // Set these to -1 so that it becomes 0 when incremented for the
+                // next iteration since we need to continue.
+                token_len = -1;
+                token_text_len = -1;
+            }
+            // Early end of line detected, interrupt parsing immediately
+            else if (raw_text[current_char] == '\n')
+            {
+                token_start = current_char + 1;
+                // Set to 0, no need to compensate for continuing the loops since
+                // we're breaking early from it.
+                token_len = 0;
+                token_text_len = 0;
+                line_text_len++;
+                break;
+            }
+
+            token_len++;
+            token_text_len++;
+            line_text_len++;
+        };
+
+        // Do not print anything if we only need to compute the paragraph's total height
+        if (do_print)
+        {
+            // Length of the raw slice for this line (includes formatting tags)
+            int line_len = token_start - line_start;
+
+            // Trim trailing whitespace/newlines from the raw slice
+            while (line_len > 0)
+            {
+                char c = raw_text[line_start + line_len - 1];
+                if (c == ' ' || c == '\n' || c == '\0')
+                    line_len--;
+                else
+                    break;
+            }
+
+            // Remove the overflowing token's visible length from this line
+            line_text_len = line_text_len - token_text_len - 1;
+            if (line_text_len < 0)
+                line_text_len = 0;
+
+            // useful DEBUG
+            // tte_printf("#{P:0,%d}line %d - %d", 40 + (dst_rect.top + line_y) * TILE_SIZE, line_y,
+            // line_text_len);
+
+            // Now, we can print the chars from line_start to token_start
+            line_x = 0;
+            if (justify_direction == JUSTIFY_CENTER)
+            {
+                line_x = (max_line_text_len - line_text_len) / 2;
+            }
+
+            tte_printf(
+                "#{P:%d,%d}%.*s",
+                (dst_rect.left + line_x) * TILE_SIZE,
+                (dst_rect.top + line_y) * TILE_SIZE,
+                line_len,
+                raw_text + line_start
+            );
+        }
+
+        line_start = token_start;
+        line_text_len = 0;
+        line_y++;
+    }
+
+    return line_y;
 }

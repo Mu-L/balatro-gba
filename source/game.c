@@ -376,6 +376,19 @@ static inline Card* discard_pop()
     return discard_pile[discard_top--];
 }
 
+static inline void display_ante(void)
+{
+    tte_printf(
+        "#{P:%d,%d; cx:0x%X000}%ld#{cx:0x%X000}/%d",
+        ANTE_TEXT_RECT.left,
+        ANTE_TEXT_RECT.top,
+        TTE_YELLOW_PB,
+        g_game_vars.ante,
+        TTE_WHITE_PB,
+        MAX_ANTE
+    );
+}
+
 void game_init()
 {
     state_machine_remove(&game_sm);
@@ -437,15 +450,7 @@ void game_reset()
     display_discards();
     display_money();
     // Ante
-    tte_printf(
-        "#{P:%d,%d; cx:0x%X000}%ld#{cx:0x%X000}/%d",
-        ANTE_TEXT_RECT.left,
-        ANTE_TEXT_RECT.top,
-        TTE_YELLOW_PB,
-        g_game_vars.ante,
-        TTE_WHITE_PB,
-        MAX_ANTE
-    );
+    display_ante();
 
     affine_background_load_palette(affine_background_gfxPal);
 }
@@ -490,8 +495,10 @@ static inline void held_jokers_update_loop(void)
     int i = 0;
     while ((joker = list_itr_next(&itr)))
     {
-        joker->sprite_object->tx = hand_x - int2fx(spacing_lut[jokers_top][i++]);
-
+        // Let the Shop handle the position of this Joker
+        if (joker != game_shop_get_description_card())
+            joker->sprite_object->tx = hand_x - int2fx(spacing_lut[jokers_top][i]);
+        i++;
         joker_object_update(joker);
     }
 }
@@ -556,6 +563,11 @@ void game_change_state(enum GameState new_game_state)
     g_game_vars.timer = TM_ZERO; // Reset the timer
 
     state_machine_change_state(&game_sm, new_game_state);
+}
+
+enum GameState game_get_state(void)
+{
+    return game_sm.state;
 }
 
 CardObject** get_played_array(void)
@@ -761,17 +773,6 @@ void display_mult(void)
     check_flaming_score();
 }
 
-static inline void display_ante(int value)
-{
-    tte_printf(
-        "#{P:%d,%d; cx:0xC000}%d#{cx:0xF000}/%d",
-        ANTE_TEXT_RECT.left,
-        ANTE_TEXT_RECT.top,
-        value,
-        MAX_ANTE
-    );
-}
-
 // Returns true if the card is *considered* a face card
 bool card_is_face(Card* card)
 {
@@ -972,9 +973,10 @@ void display_round(void)
 void display_hands(void)
 {
     tte_printf(
-        "#{P:%d,%d; cx:0xD000}%ld",
+        "#{P:%d,%d; cx:0x%X000}%ld",
         HANDS_TEXT_RECT.left,
         HANDS_TEXT_RECT.top,
+        TTE_BLUE_PB,
         g_game_vars.hands
     );
 }
@@ -982,9 +984,10 @@ void display_hands(void)
 void display_discards(void)
 {
     tte_printf(
-        "#{P:%d,%d; cx:0xE000}%ld",
+        "#{P:%d,%d; cx:0x%X000}%ld",
         DISCARDS_TEXT_RECT.left,
         DISCARDS_TEXT_RECT.top,
+        TTE_RED_PB,
         g_game_vars.discards
     );
 }
@@ -1382,7 +1385,8 @@ static inline void game_playing_handle_round_over(void)
         {
             if (g_game_vars.ante < MAX_ANTE)
             {
-                display_ante(++g_game_vars.ante);
+                g_game_vars.ante++;
+                display_ante();
 
                 // mark current boss blind as beaten and allow for reroll
                 set_blind_beaten(g_game_vars.next_boss_blind);
@@ -2549,6 +2553,7 @@ static void game_playing_on_update(void)
 void game_start(void)
 {
     affine_background_change_background(AFFINE_BG_GAME);
+    tte_colors_setup();
 
     g_game_vars.hands = MAX_HANDS;
     g_game_vars.discards = MAX_DISCARDS;
@@ -2587,16 +2592,7 @@ void game_start(void)
     display_discards(); // Discard
 
     display_money(); // Set the money display
-
-    tte_printf(
-        "#{P:%d,%d; cx:0x%X000}%ld#{cx:0x%X000}/%d",
-        ANTE_TEXT_RECT.left,
-        ANTE_TEXT_RECT.top,
-        TTE_YELLOW_PB,
-        g_game_vars.ante,
-        TTE_WHITE_PB,
-        MAX_ANTE
-    ); // Ante
+    display_ante();
 
     game_change_state(GAME_STATE_BLIND_SELECT);
 }

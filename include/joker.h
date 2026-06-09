@@ -1,3 +1,8 @@
+/**
+ * @file joker.h
+ *
+ * @brief Functions relative to the handling of Jokers
+ */
 #ifndef JOKER_H
 #define JOKER_H
 
@@ -36,6 +41,8 @@
 #define UNCOMMON_JOKER  1
 #define RARE_JOKER      2
 #define LEGENDARY_JOKER 3
+
+#define MAX_RARITIES (LEGENDARY_JOKER + 1)
 
 // Percent chance to get a joker of each rarity
 // Note that this deviates slightly from the Balatro wiki to allow legendary
@@ -132,10 +139,16 @@ typedef u32 (*JokerEffectFunc)(
     JokerEffect** joker_effect
 );
 
+typedef int (*JokerDescFunc)(Joker* joker, Rect dest_rect);
+
 typedef struct
 {
+    const char* name;
     u8 rarity;
     u8 base_value;
+    bool is_desc_dynamic; // Is the little variable description at the bottom dynamic?
+                          // Only used by the Misprint joker for now
+    JokerDescFunc joker_print_desc;
     JokerEffectFunc joker_effect_func;
 } JokerInfo;
 const JokerInfo* get_joker_registry_entry(int joker_id);
@@ -156,6 +169,28 @@ u32 joker_get_score_effect(
     enum JokerEvent joker_event,
     JokerEffect** joker_effect
 );
+
+const char* joker_get_rarity_string(u8 rarity);
+
+/**
+ * @brief Get Joker rarity panel color.
+ *
+ * The colors are organized in the `card_rarity_pal_gfx.png` file which is organized like this:
+ *  - 0     -> transparency
+ *  - 1,2   -> Common Joker
+ *  - 3,4   -> Uncommon Joker
+ *  - 5,6   -> Rare Joker
+ *  - 7,8   -> Legendary Joker / Tarot Card
+ *  - 9,10  -> Planet Card
+ *  - 11,12 -> Spectral Card
+ *  - 13,14 -> Voucher
+ *
+ * @param rarity Value of the rarity (Common, Rare...)
+ * @param main_color Whether we want the main or shadow color
+ * @return u16 value of the color, not a pointer
+ */
+u16 joker_get_rarity_color(u8 rarity, bool main_color);
+
 int joker_get_sell_value(const Joker* joker);
 
 JokerObject* joker_object_new(Joker* joker);

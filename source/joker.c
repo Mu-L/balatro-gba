@@ -3,11 +3,14 @@
 #include "card.h"
 #include "game_variables.h"
 #include "graphic_utils.h"
-#include "joker_gfx.h"
 #include "pool.h"
 #include "random.h"
 #include "soundbank.h"
 #include "util.h"
+
+// Tiles and palettes
+#include "card_rarity_pal_gfx.h"
+#include "joker_gfx.h"
 
 #include <maxmod.h>
 #include <stdlib.h>
@@ -88,6 +91,11 @@ static int spritesheet_idx_to_starting_joker_id[] = {
      0, 18, 20, 22, 27, 32, 36, 40, 42, 44,
     45, 46, 47, 48, 49, 50, 51, 52
 };
+
+// Lookup table of Joker Rarity strings. Used to display at the bottom of the description screen.
+static const char* joker_rarity_strings_lut[MAX_RARITIES] = {
+    "Common", "Uncommon", "Rare", "Legendary"
+};
 // clang-format on
 
 static int s_get_num_spritesheets(void);
@@ -150,6 +158,24 @@ u32 joker_get_score_effect(
         return JOKER_EFFECT_FLAG_NONE;
 
     return jinfo->joker_effect_func(joker, scored_card, joker_event, joker_effect);
+}
+
+const char* joker_get_rarity_string(u8 rarity)
+{
+    if (rarity >= MAX_RARITIES)
+        return NULL;
+
+    return joker_rarity_strings_lut[rarity];
+}
+
+u16 joker_get_rarity_color(u8 rarity, bool main_color)
+{
+    if (rarity >= MAX_RARITIES)
+        return 0x0;
+
+    // +1 to account for the transparency
+    // odd indices are the main colors, even ones are the shadows
+    return card_rarity_pal_gfxPal[1 + 2 * rarity + (main_color ? 0 : 1)];
 }
 
 int joker_get_sell_value(const Joker* joker)

@@ -17,6 +17,7 @@
 // Graphics
 #include "affine_background_gfx.h"
 #include "background_gfx.h"
+#include "graphic_utils.h"
 
 // Audio
 #include "audio_utils.h"
@@ -52,11 +53,9 @@ void init()
     tte_erase_screen();
     tte_init_con();
 
-    // TTE palette setup
-    pal_bg_bank[TTE_YELLOW_PB][TTE_BIT_ON_CLR_IDX] = TEXT_CLR_YELLOW;
-    pal_bg_bank[TTE_BLUE_PB][TTE_BIT_ON_CLR_IDX] = TEXT_CLR_BLUE;
-    pal_bg_bank[TTE_RED_PB][TTE_BIT_ON_CLR_IDX] = TEXT_CLR_RED;
-    pal_bg_bank[TTE_WHITE_PB][TTE_BIT_ON_CLR_IDX] = TEXT_CLR_WHITE;
+    // Will need to be called when starting the game, as some colors will have
+    // been overwritten by the logo and its whopping 10 palettes
+    tte_colors_setup();
 
     // Set up the video mode
     // BG0 is the TTE text layer
