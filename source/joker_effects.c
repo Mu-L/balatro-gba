@@ -648,14 +648,14 @@ static int dusk_joker_desc(Joker* joker, Rect dest_rect)
     return tte_printf_justified_in_rect(desc, dest_rect, JUSTIFY_CENTER, SCREEN_LEFT, true);
 }
 
-static int blueprint_joker_desc(Joker* joker, Rect dest_rect)
+static int brainstorm_joker_desc(Joker* joker, Rect dest_rect)
 {
     static const char desc[] =
         TTE_BLACK_TAG "Copies ability of the leftmost " TTE_YELLOW_TAG "Joker";
     return tte_printf_justified_in_rect(desc, dest_rect, JUSTIFY_CENTER, SCREEN_LEFT, true);
 }
 
-static int brainstorm_joker_desc(Joker* joker, Rect dest_rect)
+static int blueprint_joker_desc(Joker* joker, Rect dest_rect)
 {
     static const char desc[] =
         TTE_BLACK_TAG "Copies ability of " TTE_YELLOW_TAG "Joker" TTE_BLACK_TAG " to the right";
