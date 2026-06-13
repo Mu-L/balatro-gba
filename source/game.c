@@ -773,6 +773,21 @@ void display_mult(void)
     check_flaming_score();
 }
 
+void display_deck_size_max(void)
+{
+    // TODO: the text will overflow if deck max size exceeds 99,
+    // we will need a fix at some point for this
+    tte_erase_rect_wrapper(DECK_SIZE_RECT);
+    tte_printf(
+        "#{P:%d,%d; cx:0x%X000}%d/%d",
+        DECK_SIZE_RECT.left,
+        DECK_SIZE_RECT.top,
+        TTE_WHITE_PB,
+        deck_get_size(),
+        deck_get_max_size()
+    );
+}
+
 // Returns true if the card is *considered* a face card
 bool card_is_face(Card* card)
 {
@@ -2471,17 +2486,7 @@ static inline void game_playing_ui_text_update(void)
         }
 
         // Deck size/max size
-        // TODO: the text will overflow if deck max size exceeds 99,
-        // we will need a fix at some point for this
-        tte_erase_rect_wrapper(DECK_SIZE_RECT);
-        tte_printf(
-            "#{P:%d,%d; cx:0x%X000}%d/%d",
-            DECK_SIZE_RECT.left,
-            DECK_SIZE_RECT.top,
-            TTE_WHITE_PB,
-            deck_get_size(),
-            deck_get_max_size()
-        );
+        display_deck_size_max();
 
         last_hand_size = hand_nb_held_cards();
         last_deck_size = deck_get_size();

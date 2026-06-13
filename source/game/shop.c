@@ -887,6 +887,9 @@ static void game_shop_hide_card_desc(void)
             TTE_WHITE_PB,
             reroll_cost
         );
+
+        // Print Deck size that was erased
+        display_deck_size_max();
     }
 
     // Cleanup and change state
