@@ -106,11 +106,8 @@ void game_main_menu_on_init(void)
     main_menu_ace = card_object_new(card_new(SPADES, ACE));
     card_object_set_sprite(main_menu_ace, 0);
     main_menu_ace->sprite_object->sprite->obj->attr0 |= ATTR0_AFF_DBL;
-    main_menu_ace->sprite_object->tx = int2fx(MAIN_MENU_ACE_T_X);
-    main_menu_ace->sprite_object->x = main_menu_ace->sprite_object->tx;
-    main_menu_ace->sprite_object->ty = int2fx(MAIN_MENU_ACE_T_Y);
-    main_menu_ace->sprite_object->y = main_menu_ace->sprite_object->ty;
     main_menu_ace->sprite_object->tscale = float2fx(0.8f);
+    sprite_object_position(main_menu_ace->sprite_object, MAIN_MENU_ACE_T_X, MAIN_MENU_ACE_T_Y);
     card_object_update(main_menu_ace);
 
     // Select last highlighted button, Play button by default.

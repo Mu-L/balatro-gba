@@ -583,12 +583,11 @@ void game_run_setup_on_init(void)
     // both cards do not exist at the same time, one is destroyed before the other is created.
     card_object_set_sprite_face_down(run_setup_deck, g_game_vars.deck, 0);
 
-    run_setup_deck->sprite_object->tx = int2fx(RUN_SETUP_DECK_SPRITE_T_X);
-    run_setup_deck->sprite_object->ty = int2fx(RUN_SETUP_DECK_SPRITE_T_Y);
-
-    // Need to do -1 here so that the sprite isn't at the target position and gets updated
-    run_setup_deck->sprite_object->x = run_setup_deck->sprite_object->tx - 1;
-    run_setup_deck->sprite_object->y = run_setup_deck->sprite_object->ty - 1;
+    sprite_object_position(
+        run_setup_deck->sprite_object,
+        RUN_SETUP_DECK_SPRITE_T_X,
+        RUN_SETUP_DECK_SPRITE_T_Y
+    );
 
     card_object_update(run_setup_deck);
 

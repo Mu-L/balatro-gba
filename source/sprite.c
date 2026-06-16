@@ -196,10 +196,7 @@ void sprite_object_set_sprite(SpriteObject* sprite_object, Sprite* sprite)
 
 void sprite_object_reset_transform(SpriteObject* sprite_object)
 {
-    sprite_object->tx = 0; // Target position
-    sprite_object->ty = 0;
-    sprite_object->x = 0;
-    sprite_object->y = 0;
+    sprite_object_position(sprite_object, 0, 0); // Target position
     sprite_object->vx = 0;
     sprite_object->vy = 0;
     sprite_object->tscale = FIX_ONE; // Target scale
