@@ -990,21 +990,6 @@ void game_shop_on_update(void)
 {
     timer++;
 
-    List* shop_jokers_list = &s_shop_jokers_list;
-
-    if (!list_is_empty(shop_jokers_list))
-    {
-        ListItr itr = list_itr_create(shop_jokers_list);
-        JokerObject* joker_object;
-        while ((joker_object = list_itr_next(&itr)))
-        {
-            if (joker_object != NULL)
-            {
-                joker_object_update(joker_object);
-            }
-        }
-    }
-
     if (timer % 20 == 0)
     {
         game_shop_lights_anim_frame();

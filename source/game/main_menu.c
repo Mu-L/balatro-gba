@@ -108,7 +108,6 @@ void game_main_menu_on_init(void)
     main_menu_ace->sprite_object->sprite->obj->attr0 |= ATTR0_AFF_DBL;
     main_menu_ace->sprite_object->tscale = float2fx(0.8f);
     sprite_object_position(main_menu_ace->sprite_object, MAIN_MENU_ACE_T_X, MAIN_MENU_ACE_T_Y);
-    card_object_update(main_menu_ace);
 
     // Select last highlighted button, Play button by default.
     // e.g. if we return from the options menu, we want the Options button to be highlighted.
@@ -122,7 +121,6 @@ void game_main_menu_on_init(void)
 void game_main_menu_on_update(void)
 {
     main_menu_ace->sprite_object->trotation = lu_sin((g_game_vars.timer << 8) / 2) / 3;
-    card_object_update(main_menu_ace);
 
     selection_grid_process_input(&main_menu_selection_grid);
 }

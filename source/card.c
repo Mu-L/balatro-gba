@@ -118,13 +118,6 @@ void card_object_destroy(CardObject** card_object)
     *card_object = NULL;
 }
 
-void card_object_update(CardObject* card_object)
-{
-    if (card_object == NULL)
-        return;
-    sprite_object_update(card_object->sprite_object);
-}
-
 void card_object_set_sprite(CardObject* card_object, int layer)
 {
     int tile_index = CARD_TID + (layer * CARD_SPRITE_OFFSET);

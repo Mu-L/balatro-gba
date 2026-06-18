@@ -28,6 +28,8 @@ OBJ_AFFINE* obj_aff_buffer = (OBJ_AFFINE*)obj_buffer;
 static Sprite* free_sprites[MAX_SPRITES] = {NULL};
 static bool free_affines[MAX_AFFINES] = {false};
 
+static List sprite_objects_list = LIST_DEFAULT;
+
 // Sprite methods
 Sprite* sprite_new(u16 a0, u16 a1, u32 tid, u32 pb, int sprite_index)
 {
@@ -174,6 +176,8 @@ SpriteObject* sprite_object_new()
     sprite_object_reset_transform(sprite_object);
     sprite_object->focused = false;
 
+    list_push_back(&sprite_objects_list, sprite_object);
+
     return sprite_object;
 }
 
@@ -181,6 +185,9 @@ void sprite_object_destroy(SpriteObject** sprite_object)
 {
     if (*sprite_object == NULL)
         return;
+
+    list_remove_data(&sprite_objects_list, *sprite_object);
+
     sprite_destroy(&(*sprite_object)->sprite);
     POOL_FREE(SpriteObject, *sprite_object);
     *sprite_object = NULL;
@@ -299,6 +306,16 @@ IWRAM_CODE void sprite_object_update(SpriteObject* sprite_object)
         update_sprite_position(sprite_object);
 
     sprite_position(sprite_object->sprite, fx2int(sprite_object->x), fx2int(sprite_object->y));
+}
+
+void sprite_object_update_all(void)
+{
+    SpriteObject* sprite_object = NULL;
+    ListItr itr = list_itr_create(&sprite_objects_list);
+    while ((sprite_object = list_itr_next(&itr)))
+    {
+        sprite_object_update(sprite_object);
+    }
 }
 
 void sprite_object_shake(SpriteObject* sprite_object, mm_word sound_id)

@@ -589,8 +589,6 @@ void game_run_setup_on_init(void)
         RUN_SETUP_DECK_SPRITE_T_Y
     );
 
-    card_object_update(run_setup_deck);
-
     /* Uncomment these lines when we figure out how to properly restore a game save
     is_saved_game_valid = is_game_data_valid();
     if (is_saved_game_valid)

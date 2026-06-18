@@ -255,11 +255,6 @@ void joker_object_destroy(JokerObject** joker_object)
     *joker_object = NULL;
 }
 
-void joker_object_update(JokerObject* joker_object)
-{
-    sprite_object_update(joker_object->sprite_object);
-}
-
 void joker_object_shake(JokerObject* joker_object, mm_word sound_id)
 {
     sprite_object_shake(joker_object->sprite_object, sound_id);

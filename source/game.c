@@ -195,7 +195,7 @@ static const Rect DECK_SIZE_RECT            = {200,     152,    240,       160  
 static const Rect ROUND_TEXT_RECT           = {48,      144,    UNDEFINED, UNDEFINED };
 static const Rect ANTE_TEXT_RECT            = {8,       144,    UNDEFINED, UNDEFINED };
 
-static const BG_POINT CARD_DRAW_POS         = {208,     110};
+static const BG_POINT CARD_DRAW_POS         = {208,     118};
 static const BG_POINT CARD_DISCARD_PNT      = {240,     70};
 static const BG_POINT HAND_START_POS        = {120,     90};
 static const BG_POINT HAND_PLAY_POS         = {120,     70};
@@ -467,7 +467,6 @@ static inline void discarded_jokers_update_loop(void)
 
     while ((joker_object = list_itr_next(&itr)))
     {
-        joker_object_update(joker_object);
         if (joker_object->sprite_object->x == joker_object->sprite_object->tx &&
             joker_object->sprite_object->y == joker_object->sprite_object->ty)
         {
@@ -499,7 +498,6 @@ static inline void held_jokers_update_loop(void)
         if (joker != game_shop_get_description_card())
             joker->sprite_object->tx = hand_x - int2fx(spacing_lut[jokers_top][i]);
         i++;
-        joker_object_update(joker);
     }
 }
 
@@ -515,8 +513,6 @@ static inline void expired_jokers_update_loop(void)
 
     while ((joker_object = list_itr_next(&itr)))
     {
-        joker_object_update(joker_object);
-
         // let just enough frames pass that we see it rotating and shrinking
         if (g_game_vars.timer % FRAMES(EXPIRE_ANIMATION_FRAME_COUNT) == 0)
         {
@@ -556,6 +552,8 @@ void game_update()
     jokers_update_loop();
 
     state_machine_update();
+
+    sprite_object_update_all();
 }
 
 void game_change_state(enum GameState new_game_state)
@@ -2148,7 +2146,6 @@ static inline void played_cards_update_loop(void)
         }
 
         played[played_idx]->sprite_object->tscale = FIX_ONE;
-        card_object_update(played[played_idx]);
     }
 }
 
@@ -2262,13 +2259,9 @@ static inline void game_playing_discarded_cards_loop(void)
             discarded_card_object->sprite_object->ty = int2fx(112);
             discarded_card_object->sprite_object->x = int2fx(240);
             discarded_card_object->sprite_object->y = int2fx(80);
-
-            card_object_update(discarded_card_object);
         }
         else
         {
-            card_object_update(discarded_card_object);
-
             if (discarded_card_object->sprite_object->y >= discarded_card_object->sprite_object->ty)
             {
                 deck_push(discarded_card_object->card); // Put the card back into the deck
@@ -2448,7 +2441,6 @@ static inline void cards_in_hand_update_loop(void)
 
             hand[i]->sprite_object->tx = hand_x;
             hand[i]->sprite_object->ty = hand_y;
-            card_object_update(hand[i]);
         }
     }
 }

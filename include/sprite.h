@@ -239,6 +239,13 @@ void sprite_object_reset_transform(SpriteObject* sprite_object);
 IWRAM_CODE void sprite_object_update(SpriteObject* sprite_object);
 
 /**
+ * @brief Update all SpriteObjects, to be called once per frame in the main update loop.
+ *
+ * TODO: try and put this function in IWRAM for performance purposes. Crashed the last time I tried.
+ */
+void sprite_object_update_all(void);
+
+/**
  * @brief Shake SpriteObject on screen and play a sound
  *
  * @param SpriteObject pointer to SpriteObject to shake. Cannot be **NULL**.
