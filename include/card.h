@@ -7,7 +7,7 @@
 #include <maxmod.h>
 #include <tonc.h>
 
-#define MAX_CARDS           (NUM_SUITS * NUM_RANKS)
+#define MAX_CARDS           128 // Arbitrary high value so we don't have issues
 #define MAX_CARDS_ON_SCREEN 16
 
 #define CARD_TID            0

@@ -75,6 +75,16 @@ static Hand hand = {
 static ContainedHandTypes compute_contained_hand_types(void);
 static enum HandType compute_hand_type(struct ContainedHandTypes contained_types);
 
+// Misc Hand Functions
+
+const char* get_hand_type_name(enum HandType hand_type)
+{
+    if (hand_type <= NONE || hand_type > FLUSH_FIVE)
+        return NULL;
+
+    return hand_base_values[hand_type].display_name;
+}
+
 // Hand Struct Manipulation
 
 enum HandState get_hand_state(void)

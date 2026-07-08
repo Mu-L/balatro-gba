@@ -497,8 +497,11 @@ static inline void game_round_execute_play_hand(void)
         return;
 
     set_hand_state(HAND_PLAY);
+
     --g_game_vars.hands;
     display_hands();
+
+    g_game_vars.nb_played_hands[get_hand_type() - 1]++;
 }
 
 /**
@@ -1068,6 +1071,9 @@ static inline void game_round_process_input_and_state(void)
             temp_score = u32_protected_mult(g_game_vars.chips, g_game_vars.mult);
             lerped_temp_score = int2fx(temp_score);
             lerped_score = int2fx(g_game_vars.score);
+
+            if (temp_score > g_game_vars.best_hand_score)
+                g_game_vars.best_hand_score = temp_score;
 
             display_temp_score(temp_score);
 

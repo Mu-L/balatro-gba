@@ -36,6 +36,7 @@
 #include <maxmod.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define STRAIGHT_AND_FLUSH_SIZE_FOUR_FINGERS 4
 #define STRAIGHT_AND_FLUSH_SIZE_DEFAULT      5
@@ -95,10 +96,14 @@ static StateMachine game_sm = STATE_MACHINE_DEFINE(state_info, GAME_STATE_MAX);
 // Initialization of the global vars
 // clang-format off
 GameVariables g_game_vars = {
-    .timer = 0, .rng_info = {0, 0},
+    .timer = 0,
+    // Setting the seed to an invalid value so that the Run Setup screen knows we're not reusing a previous Run's seed
+    .rng_info = {UNDEFINED, 0},
 
     .round = 0, .ante = 0, .money = 0, .hand_size = DEFAULT_HAND_SIZE,
     .deck = DECK_TYPE_RED,
+
+    .best_hand_score = 0, .nb_played_hands = {0},
 
     .current_blind = BLIND_TYPE_SMALL,
     .next_boss_blind = BLIND_TYPE_BIG,
@@ -186,9 +191,14 @@ void game_init()
     g_game_vars.ante = STARTING_ANTE;
     g_game_vars.money = STARTING_MONEY;
     g_game_vars.score = STARTING_SCORE;
+    g_game_vars.round = 0;
     g_game_vars.chips = 0;
     g_game_vars.mult = 0;
     g_game_vars.round = STARTING_ROUND;
+
+    g_game_vars.best_hand_score = 0;
+    for (int i = 0; i < HAND_TYPE_MAX; i++)
+        g_game_vars.nb_played_hands[i] = 0;
 
     // Initialize/reset unbeaten Boss/Showdown Blinds so they are all available
     init_unbeaten_blinds_list(false);

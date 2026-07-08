@@ -40,7 +40,8 @@ enum HandType
     ROYAL_FLUSH,
     FIVE_OF_A_KIND,
     FLUSH_HOUSE,
-    FLUSH_FIVE
+    FLUSH_FIVE,
+    HAND_TYPE_MAX = FLUSH_FIVE
 };
 
 // clang-format off
@@ -70,6 +71,10 @@ typedef struct ContainedHandTypes
     };
 } ContainedHandTypes;
 // clang-format on
+
+// Misc Hand Functions
+
+const char* get_hand_type_name(enum HandType hand_type);
 
 // Hand Structure Manipulation
 

@@ -7,6 +7,7 @@
 #define GAME_VARIABLES_H
 
 #include "blind.h"
+#include "hand.h"
 #include "random.h"
 
 #include <tonc.h>
@@ -48,6 +49,9 @@ typedef struct
     s32 money;
     s32 hand_size;
     s32 deck;
+
+    u32 best_hand_score;
+    u32 nb_played_hands[HAND_TYPE_MAX];
 
     // Blind variables
 
