@@ -194,23 +194,24 @@ void sprite_init(void);
 void sprite_draw(void);
 
 /**
- * @brief Allocate and retrieve a pointer to a valid SpriteObject
+ * @brief Initialize a SpriteObject to a default state.
+ * Must be called only once per SpriteObject when it is created.
  *
- * @return A valid pointer to an newly allocated SpriteObject
- *         if successful, othewise return **NULL**.
+ * @param sprite_object - The SpriteObject to initialize
  */
-SpriteObject* sprite_object_new();
+void sprite_object_init(SpriteObject* sprite_object);
 
 /**
  * @brief Destroy SpriteObject
  *
- * Destroy a SpriteObject by freeing it back to the pool and releasing its
- * associated resources
+ * Destroy a SpriteObject by releasing its associated resources (e.g. the sprite).
+ * This invalidates the SpriteObject and it should not be used after destroyed,
+ * a new one should be created instead.
  *
- * @param sprite_object pointer to a pointer of SpriteObject to destroy.
+ * @param sprite_object pointer to a SpriteObject to destroy.
  *        Cannot be **NULL**.
  */
-void sprite_object_destroy(SpriteObject** sprite_object);
+void sprite_object_destroy(SpriteObject* sprite_object);
 
 /**
  * @brief Register a Sprite to an associated SpriteObject

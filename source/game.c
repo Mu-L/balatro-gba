@@ -253,10 +253,10 @@ static inline void discarded_jokers_update_loop(void)
 
     while ((joker_object = list_itr_next(&itr)))
     {
-        if (joker_object->sprite_object->x == joker_object->sprite_object->tx &&
-            joker_object->sprite_object->y == joker_object->sprite_object->ty)
+        if (joker_object->x == joker_object->tx && joker_object->y == joker_object->ty)
         {
             list_itr_remove_current_node(&itr);
+            // TODO: joker_object_dispose() instead?
             joker_object_destroy(&joker_object);
         }
     }
@@ -282,9 +282,15 @@ static inline void held_jokers_update_loop(void)
     {
         // Let the Shop handle the position of this Joker
         if (joker != game_shop_get_description_card())
-            joker->sprite_object->tx = hand_x - int2fx(spacing_lut[jokers_top][i]);
+            joker->tx = hand_x - int2fx(spacing_lut[jokers_top][i]);
         i++;
     }
+}
+
+bool joker_object_can_acquire(Item* joker_object)
+{
+    GBAL_RETURN_IF_NULL_RET(joker_object, false);
+    return (list_get_len(get_jokers_list()) < MAX_JOKERS_HELD_SIZE);
 }
 
 static inline void expired_jokers_update_loop(void)
@@ -429,7 +435,8 @@ void remove_owned_joker(int owned_joker_idx)
         shortcut_joker_count--;
     }
 
-    game_shop_set_joker_avail(joker_object->joker->id, true);
+    // TODO: Move to site of joker_destroy()?
+    joker_set_rollable(joker_object->joker->id, true);
     list_remove_at_idx(&_owned_jokers_list, owned_joker_idx);
 }
 

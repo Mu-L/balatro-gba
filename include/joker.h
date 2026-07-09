@@ -9,7 +9,7 @@
 #include "card.h"
 #include "game.h"
 #include "graphic_utils.h"
-#include "sprite.h"
+#include "item.h"
 
 #include <maxmod.h>
 
@@ -112,8 +112,8 @@ typedef struct
 
 typedef struct JokerObject
 {
+    Item; // First member struct inheritance
     Joker* joker;
-    SpriteObject* sprite_object;
 } JokerObject;
 
 typedef struct // These jokers are triggered after the played hand has finished scoring.
@@ -197,6 +197,51 @@ JokerObject* joker_object_new(Joker* joker);
 void joker_object_destroy(JokerObject** joker_object);
 // This doesn't actually score anything, it just performs an animation and plays a sound effect
 void joker_object_shake(JokerObject* joker_object, mm_word sound_id);
+
+/**
+ * @brief Returns the buy price of the joker object.
+ *
+ * @param joker_object the joker object whose price to return.
+ *
+ * @return UNDEFINED in case of error, the buy price of the joker otherwise.
+ */
+int joker_object_get_buy_price(Item* joker_object);
+
+// TODO: Move to an owned_jokers.c/.h file?
+/**
+ * @brief Add a Joker to the list of owned Jokers and place it in the joker row.
+ *
+ * @param joker_object The JokerObject to add cast to Item*
+ */
+void joker_object_add_to_owned(Item* joker_object);
+
+/**
+ * @brief Destroy a JokerObject item, free its resources, and make it available to be rolled.
+ *
+ * @param joker_object Pointer to the JokerObject Item* to destroy; set to NULL.
+ */
+void joker_object_dispose(Item** joker_object);
+
+/**
+ * @brief Set whether a Joker is available to be rolled for the shop, packs, etc.
+ *
+ * @param joker_id The ID of the joker whose availability to set.
+ * @param rollable true to make it rollable, false otherwise.
+ */
+void joker_set_rollable(int joker_id, bool rollable);
+
+/**
+ * @brief Reset rollable jokers to include all jokers in the registry.
+ */
+void joker_reset_rollable_jokers(void);
+
+/**
+ * @brief Roll and create a new JokerObject item.
+ *
+ * @return Newly created `Item*` (JokerObject) or NULL if none available.
+ */
+Item* joker_object_roll_new(void);
+
 // This scores the joker and returns true if it was scored successfully
 // card_object = NULL means the joker_event does not concern a particular Card, i.e. Independend or
 // On_Blind_Selected as opposed to events that concern a particular card, i.e. On_Card_Scored or

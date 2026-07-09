@@ -4,6 +4,8 @@
 #include "game.h"
 #include "game_variables.h"
 #include "graphic_utils.h"
+#include "item.h"
+#include "mgba_logger.h"
 #include "pool.h"
 #include "random.h"
 #include "soundbank.h"
@@ -169,28 +171,25 @@ int sprite_get_pb(const Sprite* sprite)
 }
 
 // SpriteObject methods
-SpriteObject* sprite_object_new()
+void sprite_object_init(SpriteObject* sprite_object)
 {
-    SpriteObject* sprite_object = POOL_GET(SpriteObject);
+    GBAL_RETURN_IF_NULL_VOID(sprite_object);
+
     sprite_object->sprite = NULL;
     sprite_object_reset_transform(sprite_object);
     sprite_object->focused = false;
 
     list_push_back(&sprite_objects_list, sprite_object);
-
-    return sprite_object;
 }
 
-void sprite_object_destroy(SpriteObject** sprite_object)
+void sprite_object_destroy(SpriteObject* sprite_object)
 {
-    if (*sprite_object == NULL)
+    if (sprite_object == NULL)
         return;
 
-    list_remove_data(&sprite_objects_list, *sprite_object);
+    list_remove_data(&sprite_objects_list, sprite_object);
 
-    sprite_destroy(&(*sprite_object)->sprite);
-    POOL_FREE(SpriteObject, *sprite_object);
-    *sprite_object = NULL;
+    sprite_destroy(&sprite_object->sprite);
 }
 
 void sprite_object_set_sprite(SpriteObject* sprite_object, Sprite* sprite)

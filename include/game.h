@@ -4,12 +4,13 @@
 #include "game/common_ui.h"
 #include "game_variables.h"
 #include "graphic_utils.h"
+#include "item.h"
 
 #include <tonc.h>
 
 #define MAX_DECK_SIZE        52
 #define MAX_JOKERS_HELD_SIZE 5 // This doesn't account for negatives right now.
-#define MAX_SHOP_JOKERS      2 // TODO: Make this dynamic and allow for other items besides jokers
+#define MAX_SHOP_ITEMS       2 // TODO: Make this dynamic
 #define MAX_SELECTION_SIZE   5
 #define FRAMES(x)            (((x) + (g_game_vars.game_speed) - 1) / (g_game_vars.game_speed))
 
@@ -69,6 +70,7 @@ void game_change_state(enum GameState new_game_state);
 enum GameState game_get_state(void);
 
 bool is_joker_owned(int joker_id);
+bool joker_object_can_acquire(Item* item);
 bool card_is_face(Card* card);
 void add_joker(JokerObject* joker_object);
 void remove_owned_joker(int owned_joker_idx);

@@ -2,7 +2,7 @@
 #define CARD_H
 
 #include "deck_types.h"
-#include "sprite.h"
+#include "item.h"
 
 #include <maxmod.h>
 #include <tonc.h>
@@ -54,8 +54,8 @@ typedef struct Card
 
 typedef struct CardObject
 {
+    Item; // First member struct inheritance
     Card* card;
-    SpriteObject* sprite_object;
     bool selected;
 } CardObject;
 
@@ -82,5 +82,8 @@ void card_object_shake(CardObject* card_object, mm_word sound_id);
 void card_object_set_selected(CardObject* card_object, bool selected);
 bool card_object_is_selected(CardObject* card_object);
 Sprite* card_object_get_sprite(CardObject* card_object);
+
+int card_object_get_buy_price(Item* card_object);
+void card_object_dispose(Item** card_object);
 
 #endif // CARD_H
