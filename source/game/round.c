@@ -869,13 +869,7 @@ static inline void select_flush_and_straight_cards_in_played_hand(void)
         get_hand_type() == ROYAL_FLUSH)
     {
         bool straight_selection[MAX_HAND_SIZE] = {false};
-        find_straight_in_played_cards(
-            played,
-            played_top,
-            is_shortcut_joker_active(),
-            min_len,
-            straight_selection
-        );
+        find_straight_in_played_cards(played, played_top, min_len, straight_selection);
         // Add the results into the final selection
         for (int i = 0; i <= played_top; i++)
         {

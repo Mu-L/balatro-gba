@@ -583,14 +583,8 @@ int find_flush_in_played_cards(CardObject** played, int top, int min_len, bool* 
 }
 
 // Returns the number of cards in the best straight or 0 if no straight of min_len is found, marks
-// as true them in out_selection[]. This is mostly from Google Gemini
-int find_straight_in_played_cards(
-    CardObject** played,
-    int top,
-    bool shortcut_active,
-    int min_len,
-    bool* out_selection
-)
+// them as true in out_selection[]. This is mostly from Google Gemini
+int find_straight_in_played_cards(CardObject** played, int top, int min_len, bool* out_selection)
 {
     if (top < 0)
         return 0;
@@ -617,6 +611,7 @@ int find_straight_in_played_cards(
     // TODO: Consolidate functions to avoid code duplication?
     // Might cost performance because this does a little more
     int ace_low_len = ranks[ACE] ? 1 : 0;
+    bool is_shortcut_active = is_shortcut_joker_active();
     for (int i = 0; i < NUM_RANKS; i++)
     {
         if (ranks[i] > 0)
@@ -624,7 +619,7 @@ int find_straight_in_played_cards(
             int prev1 = 0, prev2 = 0;
             int parent1 = -1, parent2 = -1;
 
-            if (shortcut_active)
+            if (is_shortcut_active)
             {
                 if (i == TWO)
                 {
@@ -733,8 +728,6 @@ int find_straight_in_played_cards(
     return 0;
 }
 
-// This is used for the special case in "Four Fingers" where you can add a pair into a straight
-// (e.g. AA234 should score all 5 cards)
 void select_paired_cards_in_hand(CardObject** played, int played_top, bool* selection)
 {
     // Build a set of ranks that are already selected
