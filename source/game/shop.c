@@ -32,6 +32,7 @@
 #define TM_CREATE_SHOP_ITEMS_WAIT 1
 #define TM_SHIFT_SHOP_ICON_WAIT   7
 #define TM_SHOW_CARD_DESC_WAIT    12
+#define TM_HIDE_DECK_WAIT         5
 
 // Pixel sized
 #define ITEM_SHOP_Y               71
@@ -62,13 +63,13 @@
 
 // clang-format off
 // Positions in tiles
-static const BG_POINT SHOP_CLEAR_3X3_SRC_POS        = { 29,  0};
 static const Rect     SHOP_ICON_FROM_RECT           = {  0, 26,  8, 26};
 static const BG_POINT SHOP_ICON_TO_POS              = {  0,  0};
 static const BG_POINT OWNED_CARDS_PANEL_3X3_SRC_POS = { 29, 21};
 static const Rect     OWNED_JOKERS_PANEL_RECT       = {  9,  1, 21,  5};
 static const Rect     OWNED_CONSUMABLES_PANEL_RECT  = { 23,  1, 28,  5};
 static const Rect     OWNED_CARDS_PANEL_RECT        = {  9,  1, 28,  5};
+static const Rect     OWNED_CARDS_PANEL_ANIM_CLEAR  = {  9,  0, 28,  1};
 static const Rect     CARD_DESC_9_PTCH_TO_RECT      = {  9,  6, 28, 18};
 static const NinePatchRect CARD_DESC_9_PTCH_SRC = {
                                         .patch_rect = { 27, 25, 31, 31},
@@ -176,6 +177,7 @@ static JokerObject* s_description_card = NULL;
 static FIXED s_description_card_original_x_pos = UNDEFINED;
 static FIXED s_description_card_original_y_pos = UNDEFINED;
 static List* s_description_card_original_list = NULL;
+static int s_show_description_anim_progress = 0;
 
 JokerObject* game_shop_get_description_card(void)
 {
@@ -606,6 +608,10 @@ static void game_shop_show_card_desc(void)
     // Anim start
     if (s_timer == 1)
     {
+        // This starts at 0, then gets incremented up to TM_SHOW_CARD_DESC_WAIT. Will be used to
+        // revert the animation if the B button is released midway through it
+        s_show_description_anim_progress = 0;
+
         // Erase shop text and disable transparency window
 
         tte_erase_rect_wrapper(PLAYING_SCREEN_RECT);
@@ -637,11 +643,12 @@ static void game_shop_show_card_desc(void)
         s_description_card->ty = int2fx(CARD_DESCRIPTION_SPRITE_POS.y);
     }
 
-    // First 12 anim frames
     if (s_timer <= TM_SHOW_CARD_DESC_WAIT)
     {
-        // Hide Deck (last 5 frames only)
-        if (TM_SHOW_CARD_DESC_WAIT - s_timer < 5)
+        s_show_description_anim_progress++;
+
+        // Hide Deck (last frames only)
+        if (TM_SHOW_CARD_DESC_WAIT - s_timer < TM_HIDE_DECK_WAIT)
             main_bg_se_move_rect_1_tile_vert(DECK_ANIM_RECT, SCREEN_DOWN);
         // Hide shop panel
         main_bg_se_move_rect_1_tile_vert(POP_MENU_ANIM_RECT, SCREEN_DOWN);
@@ -690,10 +697,8 @@ static void game_shop_show_card_desc(void)
         );
     }
 
-    // Actively wait for the B button to be released, but only if the described card has stopped
-    // moving
-    else if (s_description_card->vx == 0 && s_description_card->vy == 0 &&
-             !key_held(DESELECT_CARDS))
+    // Actively wait for the B button to be released
+    if (!key_held(DESELECT_CARDS))
     {
         s_timer = TM_ZERO;
         state_machine_change_state(&shop_sm, GAME_SHOP_HIDE_CARD_DESC);
@@ -708,9 +713,18 @@ static void game_shop_hide_card_desc(void)
     // Anim start
     if (s_timer == 1)
     {
-        // Erase shop text and Joker Description frame
+        // Erase shop text and Joker Description frame if we had time to draw them
+        if (s_show_description_anim_progress >= TM_SHOW_CARD_DESC_WAIT)
+        {
+            main_bg_se_clear_rect(CARD_DESC_9_PTCH_TO_RECT);
+        }
+        // Or clear the owned cards' panel that haven't finished moving up
+        else
+        {
+            main_bg_se_clear_rect(OWNED_CARDS_PANEL_ANIM_CLEAR);
+        }
+
         tte_erase_rect_wrapper(PLAYING_SCREEN_RECT);
-        main_bg_se_copy_expand_3x3_rect(CARD_DESC_9_PTCH_TO_RECT, SHOP_CLEAR_3X3_SRC_POS);
 
         // Enable transparency window
         toggle_windows(false, true);
@@ -745,18 +759,20 @@ static void game_shop_hide_card_desc(void)
         s_description_card->ty = s_description_card_original_y_pos;
     }
 
-    // First 12 anim frames
-    if (s_timer <= TM_SHOW_CARD_DESC_WAIT)
+    if (s_timer <= s_show_description_anim_progress)
     {
-        // Show Deck (last 5 frames only)
-        if (TM_SHOW_CARD_DESC_WAIT - s_timer < 5)
+        // Show Deck (last frames only)
+        if (s_show_description_anim_progress > TM_HIDE_DECK_WAIT &&
+            s_timer < (s_show_description_anim_progress - (TM_HIDE_DECK_WAIT + 1)))
+        {
             main_bg_se_move_rect_1_tile_vert(DECK_ANIM_RECT, SCREEN_UP);
+        }
         // Show shop panel
         main_bg_se_move_rect_1_tile_vert(POP_MENU_ANIM_RECT, SCREEN_UP);
     }
 
     // Last anim frame (no need to wait for the Joker to have stopped for this):
-    else if (s_timer == TM_SHOW_CARD_DESC_WAIT + 1)
+    else if (s_timer == s_show_description_anim_progress + 1)
     {
         // Need to account for the description_card being selected if it came from the shop.
         if (s_description_card_original_list == &s_shop_items_list)
